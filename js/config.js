@@ -26,10 +26,11 @@ const SERVICIOS_OPERATIVOS = [
   'RX Quirofano'
 ];
 
-// Credenciales de Supabase (reemplazar con las tuyas)
+// Credenciales de Supabase
 const SUPABASE_URL = "https://xunxunzlnalvsejuybga.supabase.co";
-const SUPABASE_ANON_KEY = "sb_secret_kn3VgkzeYJtULzsn48TobQ_aWRh1u0O";
+const SUPABASE_ANON_KEY = "sb_publishable_Yjv8upcjMsYXiwssHX5W9Q_8DVIrqSp";
 
-const db = (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "https://xunxunzlnalvsejuybga.supabase.co")
+// Inicialización directa del cliente
+const db = (typeof window.supabase !== 'undefined')
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
