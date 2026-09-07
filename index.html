@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Guardias en Tiempo Real</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-dark-theme text-light">
+
+  <div class="container-fluid py-4 px-md-5">
+    <header class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+      <div>
+        <h2 class="fw-bold mb-0 text-white">PANEL DE GUARDIAS VIGENTES</h2>
+        <span class="text-muted small">Visualización Operativa Hospitalaria en Vivo</span>
+      </div>
+      <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
+        <a href="cargar.html" class="btn btn-outline-info btn-sm">➕ Cargar Guardia</a>
+        <div id="reloj" class="clock-display px-3 py-1 rounded bg-panel border border-secondary text-info fw-semibold">--:--:--</div>
+      </div>
+    </header>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card bg-panel border-secondary shadow-sm h-100">
+          <div class="card-header bg-transparent border-secondary py-3">
+            <h5 class="card-title text-success mb-0 d-flex align-items-center gap-2">
+              <span class="status-indicator bg-success"></span> Guardias Activas Presenciales
+            </h5>
+          </div>
+          <div class="card-body p-0 table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+              <thead class="text-secondary small text-uppercase">
+                <tr>
+                  <th>Servicio</th>
+                  <th>Profesional</th>
+                  <th>Contacto / Interno</th>
+                </tr>
+              </thead>
+              <tbody id="tablaActivas">
+                <tr><td colspan="3" class="text-center text-muted py-4">Cargando registros...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card bg-panel border-secondary shadow-sm h-100">
+          <div class="card-header bg-transparent border-secondary py-3">
+            <h5 class="card-title text-info mb-0 d-flex align-items-center gap-2">
+              <span class="status-indicator bg-info"></span> Guardias Pasivas Vigentes
+            </h5>
+          </div>
+          <div class="card-body p-0 table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+              <thead class="text-secondary small text-uppercase">
+                <tr>
+                  <th>Servicio Operativo / Apoyo</th>
+                  <th>Responsable</th>
+                  <th>Contacto / Interno</th>
+                </tr>
+              </thead>
+              <tbody id="tablaPasivas">
+                <tr><td colspan="3" class="text-center text-muted py-4">Cargando registros...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/logica.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
