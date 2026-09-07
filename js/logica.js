@@ -3,12 +3,19 @@ function parsearFechaLocal(strFecha) {
   if (strFecha instanceof Date) {
     return new Date(strFecha.getFullYear(), strFecha.getMonth(), strFecha.getDate());
   }
-  const partes = strFecha.toString().split('-');
+  const partes = strFecha.toString().slice(0, 10).split('-');
   if (partes.length === 3) {
     return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
   }
   const d = new Date(strFecha);
   return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function formatearFechaLocalISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
 }
 
 function esGuardiaVigente(g, ahora = new Date()) {
@@ -18,7 +25,7 @@ function esGuardiaVigente(g, ahora = new Date()) {
   if (!fInicio || !fFin) return false;
 
   const horaActual = ahora.getHours();
-  const diaActual = ahora.getDay();
+  const diaActual = ahora.getDay(); // 0: domingo, 6: sábado
   const modalidad = String(g.modalidad || '');
   const tipo = g.tipo;
   const servicio = g.servicio;
@@ -33,18 +40,27 @@ function esGuardiaVigente(g, ahora = new Date()) {
       hFin = parseInt(matchFranja[2], 10);
     }
 
-    // Momento exacto de arranque (en la fecha de inicio)
-    const momentoInicio = new Date(fInicio.getFullYear(), fInicio.getMonth(), fInicio.getDate(), hInicio, 0, 0);
+    // Evaluamos si el momento actual cae dentro de la franja correspondiente a "hoy" o al turno iniciado "ayer"
+    const hoyCero = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0);
 
-    // Momento exacto de finalización (en la fecha fin)
-    const momentoFin = new Date(fFin.getFullYear(), fFin.getMonth(), fFin.getDate(), hFin, 0, 0);
+    // Caso A: Turno que arrancó en la fecha de hoy
+    const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), hInicio, 0, 0);
+    const finHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), hFin, 0, 0);
+    if (hFin <= hInicio) finHoy.setDate(finHoy.getDate() + 1);
 
-    // Si termina al día siguiente del último día (ej: turno de 24hs o noche)
+    const cubreHoy = (hoyCero >= fInicio && hoyCero <= fFin && ahora >= inicioHoy && ahora < finHoy);
+
+    // Caso B: Turno que arrancó ayer y finaliza en la mañana de hoy (cruce de medianoche)
+    let cubreAyer = false;
     if (hFin <= hInicio) {
-      momentoFin.setDate(momentoFin.getDate() + 1);
+      const ayerCero = new Date(hoyCero);
+      ayerCero.setDate(ayerCero.getDate() - 1);
+      const inicioAyer = new Date(ayerCero.getFullYear(), ayerCero.getMonth(), ayerCero.getDate(), hInicio, 0, 0);
+      const finAyer = new Date(hoyCero.getFullYear(), hoyCero.getMonth(), hoyCero.getDate(), hFin, 0, 0);
+      cubreAyer = (ayerCero >= fInicio && ayerCero <= fFin && ahora >= inicioAyer && ahora < finAyer);
     }
 
-    return (ahora >= momentoInicio && ahora < momentoFin);
+    return (cubreHoy || cubreAyer);
 
   } else if (tipo === 'Pasiva') {
     fInicio.setHours(0, 0, 0, 0);
