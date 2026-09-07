@@ -1,4 +1,3 @@
-// Parser seguro de fechas locales evitando desfasajes de zona horaria UTC
 function parsearFechaLocal(strFecha) {
   if (!strFecha) return null;
   if (strFecha instanceof Date) {
@@ -12,7 +11,6 @@ function parsearFechaLocal(strFecha) {
   return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-// Evaluación exacta de turnos activos y pasivas hospitalarias
 function esGuardiaVigente(g, ahora = new Date()) {
   const fInicio = parsearFechaLocal(g.fecha_inicio || g.fechaInicio);
   const fFin = parsearFechaLocal(g.fecha_fin || g.fechaFin || g.fecha_inicio || g.fechaInicio);
@@ -20,7 +18,7 @@ function esGuardiaVigente(g, ahora = new Date()) {
   if (!fInicio || !fFin) return false;
 
   const horaActual = ahora.getHours();
-  const diaActual = ahora.getDay(); // 0 domingo, 6 sábado
+  const diaActual = ahora.getDay();
   const modalidad = String(g.modalidad || '');
   const tipo = g.tipo;
   const servicio = g.servicio;
@@ -35,10 +33,13 @@ function esGuardiaVigente(g, ahora = new Date()) {
       hFin = parseInt(matchFranja[2], 10);
     }
 
+    // Momento exacto de arranque (en la fecha de inicio)
     const momentoInicio = new Date(fInicio.getFullYear(), fInicio.getMonth(), fInicio.getDate(), hInicio, 0, 0);
-    const momentoFin = new Date(fInicio.getFullYear(), fInicio.getMonth(), fInicio.getDate(), hFin, 0, 0);
 
-    // Si cruza la medianoche (ej: 20:00 a 08:00)
+    // Momento exacto de finalización (en la fecha fin)
+    const momentoFin = new Date(fFin.getFullYear(), fFin.getMonth(), fFin.getDate(), hFin, 0, 0);
+
+    // Si termina al día siguiente del último día (ej: turno de 24hs o noche)
     if (hFin <= hInicio) {
       momentoFin.setDate(momentoFin.getDate() + 1);
     }
