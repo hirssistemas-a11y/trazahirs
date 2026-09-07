@@ -27,9 +27,9 @@ const SERVICIOS_OPERATIVOS = [
 ];
 
 // Credenciales de Supabase (reemplazar con las tuyas)
-const SUPABASE_URL = "https://TU_PROYECTO.supabase.co";
-const SUPABASE_ANON_KEY = "TU_ANON_KEY";
+const SUPABASE_URL = "https://xunxunzlnalvsejuybga.supabase.co";
+const SUPABASE_ANON_KEY = "sb_secret_kn3VgkzeYJtULzsn48TobQ_aWRh1u0O";
 
-const db = (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "https://TU_PROYECTO.supabase.co")
+const db = (typeof window.supabase !== 'undefined' && SUPABASE_URL !== "https://xunxunzlnalvsejuybga.supabase.co")
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
