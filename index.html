@@ -83,6 +83,39 @@
     }
     .btn-action-wsp:hover { background-color: #15803d; color: #fff; }
 
+    .btn-action-report {
+      background-color: #334155;
+      color: #f87171;
+      border: 1px solid #475569;
+      padding: 4px 9px;
+      font-size: 0.82rem;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-action-report:hover {
+      background-color: #dc2626;
+      border-color: #dc2626;
+      color: #ffffff;
+    }
+
+    .badge-interno {
+      background-color: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      font-size: 0.78rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
     .tabla-vacia { color: #94a3b8 !important; font-size: 0.92rem; padding: 24px 0 !important; }
 
     .alerta-oscura {
@@ -96,14 +129,12 @@
     .alerta-oscura u { color: #f87171 !important; text-decoration: none; font-weight: 600; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Soporte para exportar a XLSX nativo -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
   <!-- Barra Superior -->
   <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3 flex-wrap gap-3">
-    
     <div class="d-flex align-items-center gap-3">
       <img src="https://lh3.googleusercontent.com/d/1NQG63WbeI_nf1gDNrC5HR_JO2ieY0ohL" 
            alt="Hospital Italiano Regional del Sur" 
@@ -124,8 +155,7 @@
     </div>
     
     <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-      <a href="cargar.html" 
-         class="btn btn-primary btn-sm fw-bold">
+      <a href="cargar.html" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Cargar Guardia</span>
       </a>
 
@@ -168,7 +198,7 @@
               <tr class="text-secondary border-secondary">
                 <th>Servicio</th>
                 <th>Profesional</th>
-                <th>Comunicarse</th>
+                <th>Comunicarse / Reporte</th>
               </tr>
             </thead>
             <tbody id="tablaActivas">
@@ -191,7 +221,7 @@
               <tr class="text-secondary border-secondary">
                 <th>Servicio Operativo / Apoyo</th>
                 <th>Responsable</th>
-                <th>Comunicarse</th>
+                <th>Comunicarse / Reporte</th>
               </tr>
             </thead>
             <tbody id="tablaPasivas">
@@ -267,19 +297,20 @@
             <th>Modalidad</th>
             <th>Rango Cobertura</th>
             <th>Responsable</th>
-            <th>Contacto</th>
+            <th>WhatsApp / Tel</th>
+            <th>Interno</th>
             <th>Accion</th>
           </tr>
         </thead>
         <tbody id="tablaHistorial">
-          <tr><td colspan="8" class="text-center tabla-vacia">Cargando historial...</td></tr>
+          <tr><td colspan="9" class="text-center tabla-vacia">Cargando historial...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
-    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.0.0</strong></span>
+    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.1.0</strong></span>
     <span class="mx-2">•</span>
     <span>Ultima version: <strong id="lblFechaUpdate">07/09/2026</strong></span>
   </footer>
@@ -303,6 +334,36 @@
     </div>
   </div>
 
+  <!-- Modal Reportar Guardia -->
+  <div class="modal fade" id="modalReporte" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark border-secondary text-white">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fs-6 text-warning">
+            <i class="bi bi-exclamation-octagon-fill me-1"></i> Reporte de Guardia
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2 text-light">Gracias por su aporte, este es el contacto del referente del servicio:</p>
+          <div class="p-3 rounded bg-black bg-opacity-50 border border-secondary my-3">
+            <div class="text-secondary small mb-1">Servicio:</div>
+            <div id="repServicio" class="fw-bold text-info fs-5 mb-2"></div>
+            
+            <div class="text-secondary small mb-1">Referente / Jefatura:</div>
+            <div id="repNombre" class="fw-bold text-white fs-6 mb-3"></div>
+            
+            <div class="text-secondary small mb-1">Contacto directo:</div>
+            <div id="repAccionesContacto" class="d-flex align-items-center gap-2 flex-wrap mt-1"></div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
@@ -311,6 +372,7 @@
     var historialCompleto = [];
     var guardiasEnVivo = [];
     var modalInstance = null;
+    var modalReporteInstance = null;
     var cargandoDatos = false;
     var segundosDesdeUltimaSync = 0;
     var filtroCategoriaActual = 'todas';
@@ -370,7 +432,6 @@
       try {
         if (!db) throw new Error("Base de datos no configurada en js/config.js");
 
-        // Usamos fecha local en vez de UTC ISO para evitar saltos de día a la noche
         var ahora = new Date();
         var ayer = new Date(ahora);
         ayer.setDate(ayer.getDate() - 1);
@@ -396,7 +457,8 @@
               fechaInicio: r.fecha_inicio,
               fechaFin: r.fecha_fin,
               responsable: r.responsable,
-              contacto: r.contacto
+              contacto: r.contacto,
+              interno: r.interno
             };
           })
           .filter(function(g) {
@@ -431,15 +493,19 @@
       return num;
     }
 
-    function generarBotonesContacto(contacto, servicio, responsable) {
+    function generarBotonesContacto(contacto, servicio, responsable, interno) {
       var limpio = String(contacto || '').trim();
       var wspNum = normalizarWhatsApp(limpio);
       var html = '<div class="d-flex align-items-center gap-1 flex-wrap">';
 
-      html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar">' +
-                '<i class="bi bi-telephone-fill"></i> ' + limpio +
-              '</a>';
+      // Botón Llamar
+      if (limpio) {
+        html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar">' +
+                  '<i class="bi bi-telephone-fill"></i> ' + limpio +
+                '</a>';
+      }
 
+      // Botón WhatsApp
       if (wspNum) {
         var msg = encodeURIComponent('Hola ' + responsable + ', te contacto por la guardia de ' + servicio + ' en el Hospital Italiano.');
         var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -452,8 +518,55 @@
                 '</a>';
       }
 
+      // Interno Hospitalario (Estático)
+      if (interno && String(interno).trim() !== '') {
+        html += '<span class="badge-interno" title="Interno hospitalario">' +
+                  '<i class="bi bi-telephone-inbound"></i> Int. ' + String(interno).trim() +
+                '</span>';
+      }
+
+      // Botón Reportar Guardia
+      html += '<button type="button" class="btn-action-report" onclick="abrirModalReporte(\'' + servicio.replace(/'/g, "\\'") + '\')" title="Reportar guardia / Contactar referente">' +
+                '<i class="bi bi-flag-fill"></i> Reportar' +
+              '</button>';
+
       html += '</div>';
       return html;
+    }
+
+    function abrirModalReporte(servicio) {
+      var mapa = (typeof REFERENTES_SERVICIOS !== 'undefined') ? REFERENTES_SERVICIOS : {};
+      var referente = mapa[servicio] || { nombre: 'Dirección Médica / Guardia Central', contacto: '2914000000' };
+
+      document.getElementById('repServicio').innerText = servicio;
+      document.getElementById('repNombre').innerText = referente.nombre;
+
+      var cont = document.getElementById('repAccionesContacto');
+      cont.innerHTML = '';
+
+      var limpio = String(referente.contacto || '').trim();
+      var wsp = normalizarWhatsApp(limpio);
+
+      if (limpio) {
+        cont.innerHTML += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel fs-6 py-1 px-3">' +
+                            '<i class="bi bi-telephone-fill me-1"></i> Llamar: ' + limpio +
+                          '</a>';
+      }
+
+      if (wsp) {
+        var msg = encodeURIComponent('Hola ' + referente.nombre + ', me comunico para reportar una novedad sobre la guardia de ' + servicio + ' en el Hospital Italiano.');
+        var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        var urlWsp = esMovil ? 'https://wa.me/' + wsp + '?text=' + msg : 'https://web.whatsapp.com/send?phone=' + wsp + '&text=' + msg;
+
+        cont.innerHTML += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp fs-6 py-1 px-3">' +
+                            '<i class="bi bi-whatsapp me-1"></i> WhatsApp' +
+                          '</a>';
+      }
+
+      if (!modalReporteInstance) {
+        modalReporteInstance = new bootstrap.Modal(document.getElementById('modalReporte'));
+      }
+      modalReporteInstance.show();
     }
 
     function renderizarTablasEnVivo(guardias) {
@@ -472,7 +585,7 @@
         if (filtroCategoriaActual === 'profesional' && esOperativo) return;
         if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
 
-        var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable);
+        var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno);
         var row = '<tr>' +
           '<td class="fw-bold text-white">' + g.servicio + '</td>' +
           '<td>' + g.responsable + '</td>' +
@@ -611,7 +724,8 @@
             fechaInicio: d.fecha_inicio,
             fechaFin: d.fecha_fin,
             responsable: d.responsable,
-            contacto: d.contacto
+            contacto: d.contacto,
+            interno: d.interno || ''
           };
         });
 
@@ -638,7 +752,11 @@
       var dHasta = document.getElementById('filtroHasta').value;
 
       var filtrados = historialCompleto.filter(function(item) {
-        var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt);
+        var coincideTxt = !txt || 
+          item.responsable.toLowerCase().includes(txt) || 
+          item.contacto.toLowerCase().includes(txt) ||
+          item.interno.toLowerCase().includes(txt);
+
         var coincideServ = !serv || item.servicio === serv;
         var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
         var coincideHasta = !dHasta || item.fechaFin <= dHasta;
@@ -652,7 +770,7 @@
       var tbody = document.getElementById('tablaHistorial');
       tbody.innerHTML = '';
       if (datos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> No se encontraron guardias con esos filtros.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> No se encontraron guardias con esos filtros.</td></tr>';
         return;
       }
       datos.forEach(function(d) {
@@ -664,6 +782,7 @@
           '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
           '<td>' + d.responsable + '</td>' +
           '<td class="text-warning">' + d.contacto + '</td>' +
+          '<td>' + (d.interno ? '<span class="badge bg-secondary">Int. ' + d.interno + '</span>' : '-') + '</td>' +
           '<td>' +
             '<button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarFila(' + d.id + ')">' +
               '<i class="bi bi-trash"></i>' +
@@ -686,14 +805,18 @@
       }
     }
 
-   function exportarExcelFiltrado() {
+    function exportarExcelFiltrado() {
       var txt = document.getElementById('filtroNombre').value.toLowerCase();
       var serv = document.getElementById('filtroServicio').value;
       var dDesde = document.getElementById('filtroDesde').value;
       var dHasta = document.getElementById('filtroHasta').value;
 
       var filtrados = historialCompleto.filter(function(item) {
-        var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt);
+        var coincideTxt = !txt || 
+          item.responsable.toLowerCase().includes(txt) || 
+          item.contacto.toLowerCase().includes(txt) ||
+          item.interno.toLowerCase().includes(txt);
+
         var coincideServ = !serv || item.servicio === serv;
         var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
         var coincideHasta = !dHasta || item.fechaFin <= dHasta;
@@ -705,7 +828,6 @@
         return;
       }
 
-      // Estructuramos las filas con encabezados claros
       var filasExcel = filtrados.map(function(d) {
         return {
           "Fecha Carga": d.timestamp || '',
@@ -715,16 +837,15 @@
           "Desde": d.fechaInicio || '',
           "Hasta": d.fechaFin || '',
           "Responsable": d.responsable || '',
-          "Contacto": d.contacto || ''
+          "WhatsApp / Móvil": d.contacto || '',
+          "Interno": d.interno || ''
         };
       });
 
-      // Crear hoja y libro de cálculo
       var ws = XLSX.utils.json_to_sheet(filasExcel);
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Guardias");
 
-      // Autoajustar ancho básico de columnas
       ws['!cols'] = [
         { wch: 18 }, // Fecha Carga
         { wch: 26 }, // Servicio
@@ -733,7 +854,8 @@
         { wch: 12 }, // Desde
         { wch: 12 }, // Hasta
         { wch: 24 }, // Responsable
-        { wch: 16 }  // Contacto
+        { wch: 16 }, // Móvil
+        { wch: 12 }  // Interno
       ];
 
       var fechaHoy = new Date().toISOString().slice(0, 10);
