@@ -1,94 +1,129 @@
-function parsearFechaLocal(strFecha) {
-  if (!strFecha) return null;
-  if (strFecha instanceof Date) {
-    return new Date(strFecha.getFullYear(), strFecha.getMonth(), strFecha.getDate());
-  }
-  const partes = strFecha.toString().slice(0, 10).split('-');
-  if (partes.length === 3) {
-    return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
-  }
-  const d = new Date(strFecha);
-  return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+// ==========================================
+// LÓGICA HORARIA Y VALIDACIÓN DE GUARDIAS HIRS
+// ==========================================
 
+/**
+ * Convierte un objeto Date a string YYYY-MM-DD según la hora local de Argentina
+ * (evita el desfasaje de toISOString() que usa UTC).
+ */
 function formatearFechaLocalISO(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dia}`;
+  var anio = d.getFullYear();
+  var mes = String(d.getMonth() + 1).padStart(2, '0');
+  var dia = String(d.getDate()).padStart(2, '0');
+  return anio + '-' + mes + '-' + dia;
 }
 
-function esGuardiaVigente(g, ahora = new Date()) {
-  const fInicio = parsearFechaLocal(g.fecha_inicio || g.fechaInicio);
-  const fFin = parsearFechaLocal(g.fecha_fin || g.fechaFin || g.fecha_inicio || g.fechaInicio);
-  
-  if (!fInicio || !fFin) return false;
+/**
+ * Determina si una guardia está en curso/vigente según la fecha y hora actual del cliente.
+ * Recombina la fecha con los bloques horarios estándar de la institución.
+ * 
+ * @param {Object} guardia - Objeto guardia { tipo, modalidad, fechaInicio, fechaFin, servicio }
+ * @param {Date} [fechaReferencia] - Fecha y hora a evaluar (por defecto ahora)
+ * @returns {boolean} true si la guardia está activa en este instante
+ */
+function esGuardiaVigente(guardia, fechaReferencia) {
+  var ahora = fechaReferencia || new Date();
+  var ahoraTimestamp = ahora.getTime();
 
-  const horaActual = ahora.getHours();
-  const diaActual = ahora.getDay(); // 0: domingo, 6: sábado
-  const modalidad = String(g.modalidad || '');
-  const tipo = g.tipo;
-  const servicio = g.servicio;
+  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
+  var fFinStr = String(guardia.fechaFin || guardia.fechaInicio || '').slice(0, 10);
 
-  if (tipo === 'Activa') {
-    const matchFranja = modalidad.match(/\((\d{2}):00-(\d{2}):00\)/);
-    let hInicio = 8;
-    let hFin = 8;
+  if (!fIniStr) return false;
 
-    if (matchFranja) {
-      hInicio = parseInt(matchFranja[1], 10);
-      hFin = parseInt(matchFranja[2], 10);
+  var partesIni = fIniStr.split('-');
+  var partesFin = fFinStr.split('-');
+
+  var yIni = parseInt(partesIni[0], 10);
+  var mIni = parseInt(partesIni[1], 10) - 1;
+  var dIni = parseInt(partesIni[2], 10);
+
+  var yFin = parseInt(partesFin[0], 10);
+  var mFin = parseInt(partesFin[1], 10) - 1;
+  var dFin = parseInt(partesFin[2], 10);
+
+  // -------------------------------------------------------------
+  // 1. GUARDIAS ACTIVAS (EN PLANTA)
+  // -------------------------------------------------------------
+  if (guardia.tipo === 'Activa') {
+    var mod = guardia.modalidad || '24 hs (08:00-08:00)';
+
+    // Caso A: 24 Horas (Inicia a las 08:00 y finaliza al día siguiente de la fecha de fin a las 08:00)
+    if (mod.indexOf('24 hs') !== -1 || mod.indexOf('08:00-08:00') !== -1) {
+      var inicio = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
+      var fin = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      fin.setDate(fin.getDate() + 1); // Cruza a las 08:00 del día posterior
+      return ahoraTimestamp >= inicio.getTime() && ahoraTimestamp < fin.getTime();
     }
 
-    // Evaluamos si el momento actual cae dentro de la franja correspondiente a "hoy" o al turno iniciado "ayer"
-    const hoyCero = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0);
+    // Caso B: 12 Horas Diurna (08:00 a 20:00 de cada día del rango)
+    if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
+      var hoyStr = formatearFechaLocalISO(ahora);
+      if (hoyStr < fIniStr || hoyStr > fFinStr) return false;
 
-    // Caso A: Turno que arrancó en la fecha de hoy
-    const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), hInicio, 0, 0);
-    const finHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), hFin, 0, 0);
-    if (hFin <= hInicio) finHoy.setDate(finHoy.getDate() + 1);
-
-    const cubreHoy = (hoyCero >= fInicio && hoyCero <= fFin && ahora >= inicioHoy && ahora < finHoy);
-
-    // Caso B: Turno que arrancó ayer y finaliza en la mañana de hoy (cruce de medianoche)
-    let cubreAyer = false;
-    if (hFin <= hInicio) {
-      const ayerCero = new Date(hoyCero);
-      ayerCero.setDate(ayerCero.getDate() - 1);
-      const inicioAyer = new Date(ayerCero.getFullYear(), ayerCero.getMonth(), ayerCero.getDate(), hInicio, 0, 0);
-      const finAyer = new Date(hoyCero.getFullYear(), hoyCero.getMonth(), hoyCero.getDate(), hFin, 0, 0);
-      cubreAyer = (ayerCero >= fInicio && ayerCero <= fFin && ahora >= inicioAyer && ahora < finAyer);
+      var hora = ahora.getHours();
+      return hora >= 8 && hora < 20;
     }
 
-    return (cubreHoy || cubreAyer);
-
-  } else if (tipo === 'Pasiva') {
-    fInicio.setHours(0, 0, 0, 0);
-    fFin.setHours(23, 59, 59, 999);
-
-    if (ahora >= fInicio && ahora <= fFin) {
-      if (servicio === 'Sistemas') {
-        return (horaActual >= 15 || horaActual < 7);
-      } else if (servicio === 'Electromedicina') {
-        return (horaActual >= 13 || horaActual < 7);
-      } else if (servicio === 'Farmacia') {
-        return (horaActual >= 16 || horaActual < 7);
-      } else if (servicio === 'Instrumentadoras') {
-        return (horaActual >= 22 || horaActual < 7);
-      } else if (servicio === 'Mantenimiento') {
-        return (horaActual >= 22 || horaActual < 6);
-      } else if (servicio === 'Esterilizacion') {
-        return (diaActual === 6 || diaActual === 0 || (diaActual === 5 && horaActual >= 22) || (diaActual === 1 && horaActual < 6));
-      } else if (servicio === 'Anestesia') {
-        return (diaActual === 6 || diaActual === 0 || diaActual === 5 || (diaActual === 1 && horaActual < 6));
-      } else if (servicio === 'Hemoterapia' || servicio === 'RX Quirofano') {
-        const esFinde = (diaActual === 0 || diaActual === 6);
-        return esFinde || (horaActual >= 22 || horaActual < 7);
-      } else {
-        return true;
+    // Caso C: 12 Horas Nocturna (20:00 a 08:00 del día siguiente)
+    if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
+      var inicioNoc = new Date(yIni, mIni, dIni, 20, 0, 0, 0);
+      var finNoc = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      finNoc.setDate(finNoc.getDate() + 1);
+      
+      // Debe estar dentro del rango general y entre las 20:00 y las 08:00
+      if (ahoraTimestamp < inicioNoc.getTime() || ahoraTimestamp >= finNoc.getTime()) {
+        return false;
       }
+      var horaActual = ahora.getHours();
+      return horaActual >= 20 || horaActual < 8;
     }
+
+    // Por defecto para activa con horario no estándar: chequeo de rango de 08:00 a 08:00 +1
+    var iniDef = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
+    var finDef = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+    finDef.setDate(finDef.getDate() + 1);
+    return ahoraTimestamp >= iniDef.getTime() && ahoraTimestamp < finDef.getTime();
   }
 
-  return false;
+  // -------------------------------------------------------------
+  // 2. GUARDIAS PASIVAS / OPERATIVAS
+  // -------------------------------------------------------------
+  // Verificamos que el día actual esté dentro del rango asignado
+  var hoyStrLocal = formatearFechaLocalISO(ahora);
+  if (hoyStrLocal < fIniStr || hoyStrLocal > fFinStr) {
+    return false;
+  }
+
+  var diaSemana = ahora.getDay(); // 0 = Domingo, 6 = Sábado
+  var horaAhora = ahora.getHours();
+  var esFinde = (diaSemana === 0 || diaSemana === 6);
+  var srv = guardia.servicio || '';
+
+  // Sistemas: Lunes a Viernes pasiva desde las 15:00 hs; Fines de semana las 24 hs
+  if (srv === 'Sistemas') {
+    if (esFinde) return true;
+    return horaAhora >= 15;
+  }
+
+  // Electromedicina: Lunes a Viernes pasiva desde las 13:00 hs; Fines de semana las 24 hs
+  if (srv === 'Electromedicina') {
+    if (esFinde) return true;
+    return horaAhora >= 13;
+  }
+
+  // Farmacia: Lunes a Viernes pasiva desde las 16:00 hs; Fines de semana las 24 hs
+  if (srv === 'Farmacia') {
+    if (esFinde) return true;
+    return horaAhora >= 16;
+  }
+
+  // RX Quirófano: Lunes a Viernes pasiva nocturna (20:00 a 08:00); Fines de semana las 24 hs
+  if (srv === 'RX Quirofano') {
+    if (esFinde) return true;
+    return horaAhora >= 20 || horaAhora < 8;
+  }
+
+  // Resto de servicios pasivos (Ecografía, Técnico de Imágenes, IGEA, Mantenimiento, etc.):
+  // Cubren pasiva continua durante todo el rango asignado.
+  return true;
 }
