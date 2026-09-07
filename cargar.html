@@ -3,525 +3,276 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carga de Guardias - HIRS</title>
+  <title>Carga de Guardias - Hospital Italiano</title>
+  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1USDxCpANAUHIePsWM-mHkF6We3Ugo-jL">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
   <style>
-    html, body {
-      width: 100%;
-      min-height: 100%;
-      margin: 0;
-      padding: 0;
-      background-color: #0b1329;
-      overflow-x: hidden;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .container, .form-container {
-      padding-bottom: 70px !important;
-    }
-    :root {
-      --color-hirs-red: #c01923;
-      --color-hirs-red-hover: #9b141c;
-      --color-border: #cbd5e1;
-    }
-    body {
-      background: #eef2f6;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 25px 12px;
-    }
-    .form-container {
-      width: 100%;
-      max-width: 600px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
-      border: 1px solid #e2e8f0;
-    }
-    .header-banner {
-      background: #ffffff;
-      padding: 24px 20px 16px;
-      border-bottom: 3px solid var(--color-hirs-red);
-      text-align: center;
-      position: relative;
-    }
-    .header-logo {
-      max-width: 320px;
-      width: 85%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
-    .portal-tag {
-      font-size: 0.78rem;
-      font-weight: 700;
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      background-color: #fef2f2;
-      color: var(--color-hirs-red);
-      margin-top: 14px;
-      border: 1px solid #fecaca;
-      letter-spacing: 0.3px;
-    }
-    .btn-volver-panel {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      font-size: 0.8rem;
-    }
-    .form-body {
-      padding: 24px 28px;
-    }
-    .form-label {
-      font-size: 0.86rem;
-      font-weight: 700;
-      color: #334155;
-      margin-bottom: 5px;
-    }
-    .form-control, .form-select {
-      border: 1.5px solid var(--color-border);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 0.92rem;
-    }
-    .form-control:focus, .form-select:focus {
-      border-color: var(--color-hirs-red);
-      box-shadow: 0 0 0 3px rgba(192, 25, 35, 0.12);
-    }
-    .input-group-text {
-      background-color: #f8fafc;
-      border: 1.5px solid var(--color-border);
-      border-right: none;
-      color: #64748b;
-      border-radius: 8px 0 0 8px;
-    }
-    .input-group .form-control {
-      border-radius: 0 8px 8px 0;
-    }
-    .btn-hirs {
-      background-color: var(--color-hirs-red);
-      color: #ffffff;
-      font-weight: 700;
-      font-size: 0.95rem;
-      padding: 11px;
-      border-radius: 8px;
-      border: none;
-      box-shadow: 0 4px 10px rgba(192, 25, 35, 0.2);
-      transition: all 0.2s ease;
-    }
-    .btn-hirs:hover {
-      background-color: var(--color-hirs-red-hover);
-      color: #ffffff;
-    }
-    .badge-modo {
-      cursor: pointer;
-      user-select: none;
-      font-size: 0.74rem;
-      font-weight: 600;
-      padding: 4px 8px;
-      border-radius: 6px;
-    }
-    .badge-active {
-      background-color: var(--color-hirs-red) !important;
-      color: white !important;
-    }
-    .badge-inactive {
-      background-color: #f1f5f9 !important;
-      color: #475569 !important;
-      border: 1px solid var(--color-border);
-    }
-    .resumen-semanas {
-      font-size: 0.82rem;
-      background: #f0fdf4;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin-top: 8px;
-      line-height: 1.4;
-    }
-    .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
-      background: var(--color-hirs-red) !important;
-      border-color: var(--color-hirs-red) !important;
-    }
-    .flatpickr-day.inRange {
-      background: #fee2e2 !important;
-      border-color: #fecaca !important;
-      box-shadow: -5px 0 0 #fee2e2, 5px 0 0 #fee2e2 !important;
-    }
+    body { background-color: #0b1329; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; }
+    .card-form { border-radius: 12px; background-color: #162238; border: 1px solid #223454; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .form-control, .form-select { background-color: #0f172a; border: 1px solid #334155; color: #fff; }
+    .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+    .form-text { color: #94a3b8; }
+    .logo-img { height: 50px; width: auto; object-fit: contain; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<div class="form-container">
-  <!-- Banner Institucional con Logo Oficial Original -->
-  <div class="header-banner">
-    <a href="index.html" class="btn btn-outline-secondary btn-sm btn-volver-panel"><i class="bi bi-arrow-left"></i> Panel</a>
-    <img class="header-logo" alt="Hospital Italiano Regional del Sur" src="https://lh3.googleusercontent.com/d/1u5Sx-LNFC9bz5OMBoCP0vjGU_YsnvJ77">
-    <span class="portal-tag"><i class="bi bi-calendar-check-fill me-1"></i> Asignación y Carga de Guardias</span>
-  </div>
+  <div class="container py-4" style="max-width: 760px;">
+    
+    <div class="d-flex align-items-center justify-content-between mb-4 border-bottom border-secondary pb-3">
+      <div class="d-flex align-items-center gap-3">
+        <img src="https://lh3.googleusercontent.com/d/1USDxCpANAUHIePsWM-mHkF6We3Ugo-jL" alt="HIRS" class="logo-img">
+        <div>
+          <h3 class="mb-0 text-white fw-bold fs-4">Carga de Guardias Hospitalarias</h3>
+          <small class="text-secondary">Hospital Italiano Regional del Sur</small>
+        </div>
+      </div>
+      <a href="index.html" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver al Monitor
+      </a>
+    </div>
 
-  <div class="form-body">
-    <form id="formGuardia">
-      <div class="mb-3">
-        <label class="form-label">Servicio Hospitalario</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-hospital"></i></span>
-          <select class="form-select" id="servicio" onchange="adaptarFormulario()" required>
-            <option value="">Seleccione un servicio...</option>
-            <optgroup label="Guardias Pasivas (Semanales / Bloque)">
-              <option value="Sistemas" data-tipo="Pasiva" data-modo="semanal">Sistemas (L a L 15 a 07hs)</option>
-              <option value="Electromedicina" data-tipo="Pasiva" data-modo="semanal">Electromedicina (L a L 13 a 07hs)</option>
-              <option value="Farmacia" data-tipo="Pasiva" data-modo="semanal">Farmacia (L a L 16 a 07hs)</option>
-              <option value="Mantenimiento" data-tipo="Pasiva" data-modo="semanal">Mantenimiento (L a L 22 a 06hs)</option>
-              <option value="Instrumentadoras" data-tipo="Pasiva" data-modo="semanal">Instrumentadoras Pasiva (L a L 22 a 07hs)</option>
-              <option value="Esterilizacion" data-tipo="Pasiva" data-modo="finde">Esterilización (Vie 22hs a Lun 06hs)</option>
-              <option value="Anestesia" data-tipo="Pasiva" data-modo="finde">Anestesia Pasiva (Vie 00hs a Lun 06hs)</option>
-              <option value="Hemoterapia" data-tipo="Pasiva" data-modo="semanal">Hemoterapia Pasiva</option>
-              <option value="RX Quirofano" data-tipo="Pasiva" data-modo="semanal">RX Quirófano Pasiva</option>
+    <div class="card card-form p-4">
+      <form id="formGuardia" onsubmit="guardarGuardia(event)">
+
+        <!-- Servicio -->
+        <div class="mb-3">
+          <label class="form-label text-light fw-bold small">Servicio *</label>
+          <select id="servicio" class="form-select" required onchange="adaptarModalidad()">
+            <option value="">-- Seleccione un Servicio --</option>
+            <optgroup label="Servicios Médicos / Profesionales">
+              <option value="Guardia externa Adultos">Guardia externa Adultos</option>
+              <option value="Guardia externa Pediatrica">Guardia externa Pediatrica</option>
+              <option value="Neonatologia">Neonatologia</option>
+              <option value="Cirugia General">Cirugia General</option>
+              <option value="Traumatologia">Traumatologia</option>
+              <option value="Obstetricia">Obstetricia</option>
+              <option value="Laboratorio">Laboratorio</option>
+              <option value="Cardiologia/Unidad Coronaria">Cardiologia/Unidad Coronaria</option>
+              <option value="Anestesia">Anestesia</option>
+              <option value="Ecografia">Ecografia</option>
+              <option value="IGEA">IGEA</option>
             </optgroup>
-            <optgroup label="Guardias Profesionales Activas (En Planta)">
-              <option value="Guardia externa Adultos" data-tipo="Activa" data-modo="diaria">Guardia externa Adultos</option>
-              <option value="Guardia externa Pediatrica" data-tipo="Activa" data-modo="diaria">Guardia externa Pediátrica</option>
-              <option value="Neonatologia" data-tipo="Activa" data-modo="diaria">Neonatología</option>
-              <option value="Cirugia General" data-tipo="Activa" data-modo="diaria">Cirugía General</option>
-              <option value="Traumatologia" data-tipo="Activa" data-modo="diaria">Traumatología</option>
-              <option value="Urologia" data-tipo="Activa" data-modo="diaria">Urología</option>
-              <option value="Cirugia Pediatrica" data-tipo="Activa" data-modo="diaria">Cirugía Pediátrica</option>
-              <option value="Obstetricia" data-tipo="Activa" data-modo="diaria">Obstetricia</option>
-              <option value="Laboratorio" data-tipo="Activa" data-modo="diaria">Laboratorio</option>
-              <option value="Cardiologia/Unidad Coronaria" data-tipo="Activa" data-modo="diaria">Cardiología / UCO</option>
-              <option value="Hemodinamia" data-tipo="Activa" data-modo="diaria">Hemodinamia</option>
-              <option value="Cirugia Cardiovascular" data-tipo="Activa" data-modo="diaria">Cirugía Cardiovascular</option>
-              <option value="Parteras" data-tipo="Activa" data-modo="diaria">Parteras</option>
-              <option value="Ginecologia" data-tipo="Activa" data-modo="diaria">Ginecología</option>
-              <option value="Neurocirugia" data-tipo="Activa" data-modo="diaria">Neurocirugía</option>
-              <option value="RX Quirofano" data-tipo="Activa" data-modo="diaria">RX Quirófano (Activa)</option>
-              <option value="Instrumentadoras" data-tipo="Activa" data-modo="diaria">Instrumentadoras (Activa)</option>
-              <option value="Anestesia" data-tipo="Activa" data-modo="diaria">Anestesia (Activa)</option>
+            <optgroup label="Servicios Operativos / Apoyo">
+              <option value="Sistemas">Sistemas</option>
+              <option value="Electromedicina">Electromedicina</option>
+              <option value="Farmacia">Farmacia</option>
+              <option value="Instrumentadoras">Instrumentadoras</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Esterilizacion">Esterilizacion</option>
+              <option value="Hemoterapia">Hemoterapia</option>
+              <option value="RX Quirofano">RX Quirofano</option>
+              <option value="Tecnico de Imagenes">Tecnico de Imagenes</option>
             </optgroup>
           </select>
         </div>
-      </div>
 
-      <div class="mb-3" id="campoModalidad" style="display:none;">
-        <label class="form-label">Duración del Turno</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-clock"></i></span>
-          <select class="form-select" id="modalidad" onchange="cambiarFranjasHorarias()"></select>
-        </div>
-      </div>
+        <div class="row g-3 mb-3">
+          <!-- Tipo de Guardia -->
+          <div class="col-md-6">
+            <label class="form-label text-light fw-bold small">Tipo de Guardia *</label>
+            <select id="tipo" class="form-select" required onchange="adaptarModalidad()">
+              <option value="Activa">Activa (En Planta)</option>
+              <option value="Pasiva">Pasiva</option>
+            </select>
+          </div>
 
-      <div class="mb-3" id="campoFranja" style="display:none;">
-        <label class="form-label">Horario de Cobertura</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-stopwatch"></i></span>
-          <select class="form-select" id="franjaHoraria"></select>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0" id="lblFechas">Fechas de Cobertura</label>
-          <div id="selectorModoFechas" style="display:none;">
-            <span class="badge badge-active badge-modo me-1" id="btnModoMultiple" onclick="setModoCalendario('multiple')">
-              <i class="bi bi-calendar2-week"></i> Días Salteados
-            </span>
-            <span class="badge badge-inactive badge-modo" id="btnModoRango" onclick="setModoCalendario('range')">
-              <i class="bi bi-arrows-expand"></i> Rango Continuo
-            </span>
+          <!-- Modalidad / Horario -->
+          <div class="col-md-6">
+            <label class="form-label text-light fw-bold small">Modalidad / Franja Horaria *</label>
+            <select id="modalidad" class="form-select" required>
+              <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
+              <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
+              <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
+              <option value="Turno Rotativo / Pasiva">Turno Continuo / Pasiva</option>
+            </select>
           </div>
         </div>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
-          <input type="text" class="form-control bg-white" id="calendarioInput" placeholder="Haga clic para seleccionar fechas..." readonly required>
-        </div>
-        <div id="resumenSemanas" class="resumen-semanas" style="display:none;"></div>
-        <small class="text-muted d-block mt-1" id="ayudaFechas"></small>
-      </div>
 
-      <div class="mb-3">
-        <label class="form-label">Profesional / Responsable</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
-          <input type="text" class="form-control" id="responsable" placeholder="Ej: Dr. Pérez / Lic. Gómez" required>
+        <!-- Selección de Fechas -->
+        <div class="mb-3">
+          <label class="form-label text-light fw-bold small">Fecha o Rango de Cobertura *</label>
+          <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="cambiarModoCalendario('range')">
+              <i class="bi bi-calendar-range"></i> Rango Continuo
+            </button>
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="cambiarModoCalendario('multiple')">
+              <i class="bi bi-calendar-week"></i> Días Específicos
+            </button>
+          </div>
+          <input type="text" id="selectorFechas" class="form-control" placeholder="Seleccione fecha(s)..." required>
+          <div class="form-text" id="ayudaFechas">Seleccione el rango de días en que se cumple la guardia.</div>
         </div>
-      </div>
 
-      <div class="mb-4">
-        <label class="form-label">Teléfono o Interno Hospitalario</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-          <input type="text" class="form-control" id="contacto" placeholder="Ej: Int 1420 / 291-..." required>
+        <!-- Profesional / Responsable -->
+        <div class="mb-3">
+          <label class="form-label text-light fw-bold small">Nombre y Apellido del Responsable *</label>
+          <input type="text" id="responsable" class="form-control" placeholder="Ej: Dra. García Florencia" required>
         </div>
-      </div>
 
-      <button type="submit" class="btn btn-hirs w-100" id="btnGuardar">
-        <i class="bi bi-check2-circle me-1"></i> Confirmar Asignación
-      </button>
-    </form>
+        <!-- Canales de Contacto: WhatsApp / Móvil e Interno Opcional -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-7">
+            <label class="form-label text-light fw-bold small">WhatsApp / Teléfono Móvil *</label>
+            <input type="tel" id="contacto" class="form-control" placeholder="Ej: 2914123456" required>
+            <div class="form-text">Se usará tanto para la llamada directa como para el botón de WhatsApp.</div>
+          </div>
+
+          <div class="col-md-5">
+            <label class="form-label text-light fw-bold small">Número Interno (Opcional)</label>
+            <input type="text" id="interno" class="form-control" placeholder="Ej: 1420">
+            <div class="form-text">Interno estático para consulta visual en planta.</div>
+          </div>
+        </div>
+
+        <!-- Alertas y Botón -->
+        <div id="alertaFeedback" style="display: none;" class="alert mb-3"></div>
+
+        <button type="submit" id="btnGuardar" class="btn btn-primary w-100 py-2 fw-bold">
+          <i class="bi bi-check-circle"></i> Confirmar Asignación de Guardia
+        </button>
+      </form>
+    </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
-<script src="js/config.js"></script>
-<script>
-  let fp = null;
-  let modoActual = 'multiple';
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+  <script src="js/config.js"></script>
+  <script>
+    var fpInstance = null;
+    var modoActual = 'range';
 
-  function getLunesDeSemana(d) {
-    const fecha = new Date(d);
-    const day = fecha.getDay();
-    const diff = fecha.getDate() - day + (day === 0 ? -6 : 1);
-    fecha.setDate(diff);
-    return fecha;
-  }
-
-  function getViernesDeFinde(d) {
-    const fecha = new Date(d);
-    const day = fecha.getDay();
-    let offset = 0;
-    if (day === 5) offset = 0;
-    else if (day === 6) offset = -1;
-    else if (day === 0) offset = -2;
-    else if (day === 1) offset = -3;
-    else offset = (5 - day);
-    fecha.setDate(fecha.getDate() + offset);
-    return fecha;
-  }
-
-  function formatearFechaISO(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
-  function initFlatpickr(mode = 'multiple') {
-    if (fp) fp.destroy();
-    modoActual = mode;
-    const btnM = document.getElementById('btnModoMultiple');
-    const btnR = document.getElementById('btnModoRango');
-    if (btnM && btnR) {
-      btnM.className = mode === 'multiple' ? 'badge badge-active badge-modo me-1' : 'badge badge-inactive badge-modo me-1';
-      btnR.className = mode === 'range' ? 'badge badge-active badge-modo' : 'badge badge-inactive badge-modo';
-    }
-    fp = flatpickr("#calendarioInput", {
-      mode: mode,
-      dateFormat: "Y-m-d",
-      locale: "es",
-      conjunction: ", ",
-      onChange: function(selectedDates) {
-        actualizarResumenBloques(selectedDates);
-      }
-    });
-  }
-
-  function setModoCalendario(mode) {
-    initFlatpickr(mode);
-  }
-
-  function actualizarResumenBloques(selectedDates) {
-    const sel = document.getElementById('servicio');
-    const opt = sel.options[sel.selectedIndex];
-    const modoServicio = opt ? opt.getAttribute('data-modo') : '';
-    const resBox = document.getElementById('resumenSemanas');
-
-    if (!opt || selectedDates.length === 0) {
-      resBox.style.display = 'none';
-      return;
-    }
-
-    if (modoServicio === 'semanal') {
-      const semanas = new Map();
-      selectedDates.forEach(d => {
-        const lunes = getLunesDeSemana(d);
-        const domingo = new Date(lunes);
-        domingo.setDate(domingo.getDate() + 6);
-        const clave = formatearFechaISO(lunes);
-        semanas.set(clave, `Semana del ${formatearFechaISO(lunes)} al ${formatearFechaISO(domingo)}`);
+    function initFlatpickr(mode) {
+      if (fpInstance) fpInstance.destroy();
+      modoActual = mode;
+      fpInstance = flatpickr("#selectorFechas", {
+        mode: mode,
+        locale: "es",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d/m/Y",
+        conjunction: " | ",
+        minDate: "today"
       });
-      const lista = Array.from(semanas.values());
-      resBox.style.display = 'block';
-      resBox.innerHTML = `<strong><i class="bi bi-calendar-check me-1"></i> Semanas computadas (${lista.length}):</strong><br>• ` + lista.join('<br>• ');
-    } else if (modoServicio === 'finde') {
-      const findes = new Map();
-      selectedDates.forEach(d => {
-        const vie = getViernesDeFinde(d);
-        const lun = new Date(vie);
-        lun.setDate(lun.getDate() + 3);
-        const clave = formatearFechaISO(vie);
-        findes.set(clave, `Fin de semana del ${formatearFechaISO(vie)} al ${formatearFechaISO(lun)}`);
-      });
-      const lista = Array.from(findes.values());
-      resBox.style.display = 'block';
-      resBox.innerHTML = `<strong><i class="bi bi-calendar-check me-1"></i> Fines de semana (${lista.length}):</strong><br>• ` + lista.join('<br>• ');
-    } else {
-      resBox.style.display = 'none';
     }
-  }
 
-  function adaptarFormulario() {
-    const sel = document.getElementById('servicio');
-    const opt = sel.options[sel.selectedIndex];
-    const modo = opt ? opt.getAttribute('data-modo') : '';
-    const val = sel.value;
-
-    const divMod = document.getElementById('campoModalidad');
-    const selMod = document.getElementById('modalidad');
-    const selectorModo = document.getElementById('selectorModoFechas');
-    const ayudaFechas = document.getElementById('ayudaFechas');
-    const resBox = document.getElementById('resumenSemanas');
-    resBox.style.display = 'none';
-
-    if (modo === 'semanal') {
-      selectorModo.style.display = 'none';
-      divMod.style.display = 'none';
-      document.getElementById('campoFranja').style.display = 'none';
-      ayudaFechas.innerText = 'Clic en cualquier día de las semanas que cubras (Lunes a Domingo automático).';
-      initFlatpickr('multiple');
-    } else if (modo === 'finde') {
-      selectorModo.style.display = 'none';
-      divMod.style.display = 'none';
-      document.getElementById('campoFranja').style.display = 'none';
-      ayudaFechas.innerText = 'Clic en cualquier día del fin de semana (Viernes a Lunes automático).';
-      initFlatpickr('multiple');
-    } else {
-      selectorModo.style.display = 'block';
-      divMod.style.display = 'block';
-      ayudaFechas.innerText = 'Podés seleccionar días salteados o cambiar a rango continuo.';
-      initFlatpickr('multiple');
-      selMod.innerHTML = '';
-      if (val.includes('Guardia externa')) {
-        selMod.innerHTML = '<option value="24hs">24 hs (08:00 a 08:00)</option><option value="12hs">12 hs</option><option value="6hs">6 hs</option>';
-      } else if (val === 'Neonatologia') {
-        selMod.innerHTML = '<option value="24hs">24 hs (08:00 a 08:00)</option><option value="12hs">12 hs</option>';
+    function cambiarModoCalendario(mode) {
+      document.getElementById('selectorFechas').value = '';
+      initFlatpickr(mode);
+      var ayuda = document.getElementById('ayudaFechas');
+      if (mode === 'range') {
+        ayuda.innerText = 'Seleccione una fecha de inicio y una de fin para cubrir todo el bloque continuo.';
       } else {
-        selMod.innerHTML = '<option value="24hs">24 hs (08:00 a 08:00)</option>';
+        ayuda.innerText = 'Haga clic en cada uno de los días específicos en los que cubrirá guardia.';
       }
-      cambiarFranjasHorarias();
-    }
-  }
-
-  function cambiarFranjasHorarias() {
-    const mod = document.getElementById('modalidad').value;
-    const divFranja = document.getElementById('campoFranja');
-    const selFranja = document.getElementById('franjaHoraria');
-
-    if (mod === '6hs') {
-      divFranja.style.display = 'block';
-      selFranja.innerHTML = '<option value="08:00-14:00">08:00 a 14:00 hs</option><option value="14:00-20:00">14:00 a 20:00 hs</option><option value="20:00-02:00">20:00 a 02:00 hs (noche)</option><option value="02:00-08:00">02:00 a 08:00 hs (madrugada)</option>';
-    } else if (mod === '12hs') {
-      divFranja.style.display = 'block';
-      selFranja.innerHTML = '<option value="08:00-20:00">08:00 a 20:00 hs</option><option value="14:00-02:00">14:00 a 02:00 hs (tarde/noche)</option><option value="20:00-08:00">20:00 a 08:00 hs (noche/mañana)</option>';
-    } else {
-      divFranja.style.display = 'none';
-      selFranja.innerHTML = '<option value="08:00-08:00">08:00 a 08:00 hs</option>';
-    }
-  }
-
-  document.getElementById('formGuardia').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    if (!fp || fp.selectedDates.length === 0) {
-      alert('Por favor, seleccioná al menos una fecha o semana.');
-      return;
     }
 
-    const btn = document.getElementById('btnGuardar');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registrando...';
-
-    const sel = document.getElementById('servicio');
-    const opt = sel.options[sel.selectedIndex];
-    const modoServicio = opt.getAttribute('data-modo');
-    const tipo = opt.getAttribute('data-tipo');
-
-    let modalidadFinal = 'Semanal/Bloque';
-    if (modoServicio === 'diaria') {
-      const mod = document.getElementById('modalidad').value || '24hs';
-      const franja = document.getElementById('franjaHoraria').value || '08:00-08:00';
-      modalidadFinal = `${mod} (${franja})`;
-    } else if (modoServicio === 'finde') {
-      modalidadFinal = 'Fin de Semana (Viernes a Lunes)';
-    } else if (modoServicio === 'semanal') {
-      modalidadFinal = 'Semanal (Lunes a Domingo)';
+    function adaptarModalidad() {
+      var tipo = document.getElementById('tipo').value;
+      var modalidad = document.getElementById('modalidad');
+      if (tipo === 'Pasiva') {
+        modalidad.value = 'Turno Rotativo / Pasiva';
+      } else {
+        if (modalidad.value === 'Turno Rotativo / Pasiva') {
+          modalidad.value = '24 hs (08:00-08:00)';
+        }
+      }
     }
 
-    let bloquesRangos = [];
-    if (modoServicio === 'semanal') {
-      const mapaSemanas = new Map();
-      fp.selectedDates.forEach(d => {
-        const lunes = getLunesDeSemana(d);
-        const domingo = new Date(lunes);
-        domingo.setDate(domingo.getDate() + 6);
-        mapaSemanas.set(formatearFechaISO(lunes), [formatearFechaISO(lunes), formatearFechaISO(domingo)]);
-      });
-      bloquesRangos = Array.from(mapaSemanas.values());
-    } else if (modoServicio === 'finde') {
-      const mapaFindes = new Map();
-      fp.selectedDates.forEach(d => {
-        const vie = getViernesDeFinde(d);
-        const lun = new Date(vie);
-        lun.setDate(lun.getDate() + 3);
-        mapaFindes.set(formatearFechaISO(vie), [formatearFechaISO(vie), formatearFechaISO(lun)]);
-      });
-      bloquesRangos = Array.from(mapaFindes.values());
-    } else if (modoActual === 'range') {
-      const fIni = formatearFechaISO(fp.selectedDates[0]);
-      const fFin = formatearFechaISO(fp.selectedDates[fp.selectedDates.length - 1]);
-      bloquesRangos.push([fIni, fFin]);
-    } else {
-      fp.selectedDates.forEach(d => {
-        const f = formatearFechaISO(d);
-        bloquesRangos.push([f, f]);
-      });
-    }
+    async function guardarGuardia(e) {
+      e.preventDefault();
+      var btn = document.getElementById('btnGuardar');
+      var feed = document.getElementById('alertaFeedback');
+      feed.style.display = 'none';
 
-    const responsableVal = document.getElementById('responsable').value;
-    const contactoVal = document.getElementById('contacto').value;
-
-    const filasParaInsertar = bloquesRangos.map(b => ({
-      servicio: sel.value,
-      tipo: tipo,
-      modalidad: modalidadFinal,
-      fecha_inicio: b[0],
-      fecha_fin: b[1],
-      responsable: responsableVal,
-      contacto: contactoVal
-    }));
-
-    try {
-      if (!db) {
-        throw new Error("Base de datos no configurada en js/config.js");
+      if (!fpInstance || fpInstance.selectedDates.length === 0) {
+        feed.className = 'alert alert-warning';
+        feed.innerText = 'Debe seleccionar al menos una fecha o rango.';
+        feed.style.display = 'block';
+        return;
       }
 
-      const { data, error } = await db.from('guardias').insert(filasParaInsertar).select();
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando registros...';
 
-      if (error) throw error;
+      try {
+        var servicioValor = document.getElementById('servicio').value;
+        var tipoValor = document.getElementById('tipo').value;
+        var modalidadValor = document.getElementById('modalidad').value;
+        var respValor = document.getElementById('responsable').value.trim();
+        var contactoValor = document.getElementById('contacto').value.trim();
+        var internoValor = document.getElementById('interno').value.trim();
 
-      alert('Se registraron con éxito ' + filasParaInsertar.length + ' guardias/semanas.');
-      document.getElementById('formGuardia').reset();
-      adaptarFormulario();
-    } catch(err) {
-      console.error("Error al registrar guardia:", err);
-      alert('Ocurrió un error al registrar: ' + (err.message || 'Error de conexión'));
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Confirmar Asignación';
+        var formatoISO = function(d) {
+          var y = d.getFullYear();
+          var m = String(d.getMonth() + 1).padStart(2, '0');
+          var dia = String(d.getDate()).padStart(2, '0');
+          return y + '-' + m + '-' + dia;
+        };
+
+        var fechasParaInsertar = [];
+
+        if (modoActual === 'range') {
+          var fIni = fpInstance.selectedDates[0];
+          var fFin = fpInstance.selectedDates[1] || fIni;
+          fechasParaInsertar.push({
+            inicio: formatoISO(fIni),
+            fin: formatoISO(fFin)
+          });
+        } else {
+          // Modo multiple: cada día es un bloque individual
+          fpInstance.selectedDates.forEach(function(d) {
+            var str = formatoISO(d);
+            fechasParaInsertar.push({ inicio: str, fin: str });
+          });
+        }
+
+        var filas = fechasParaInsertar.map(function(item) {
+          return {
+            servicio: servicioValor,
+            tipo: tipoValor,
+            modalidad: modalidadValor,
+            fecha_inicio: item.inicio,
+            fecha_fin: item.fin,
+            responsable: respValor,
+            contacto: contactoValor,
+            interno: internoValor || null
+          };
+        });
+
+        const { data, error } = await db
+          .from('guardias')
+          .insert(filas);
+
+        if (error) throw error;
+
+        feed.className = 'alert alert-success';
+        feed.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Se registraron exitosamente ' + filas.length + ' guardia(s).';
+        feed.style.display = 'block';
+
+        // Limpiar formulario
+        document.getElementById('responsable').value = '';
+        document.getElementById('contacto').value = '';
+        document.getElementById('interno').value = '';
+        document.getElementById('selectorFechas').value = '';
+        initFlatpickr(modoActual);
+
+      } catch (err) {
+        console.error("Error al registrar:", err);
+        feed.className = 'alert alert-danger';
+        feed.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i> Error: ' + (err.message || 'No se pudo guardar');
+        feed.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Asignación de Guardia';
+      }
     }
-  });
 
-  initFlatpickr('multiple');
-</script>
+    initFlatpickr('range');
+  </script>
 </body>
 </html>
