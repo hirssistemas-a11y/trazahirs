@@ -3,71 +3,745 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitor de Guardias en Tiempo Real</title>
+  <title>Panel de Guardias - Hospital Italiano</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: Arial, sans-serif; padding: 25px; }
-    .panel-card { border-radius: 10px; background-color: #1e293b; border: 1px solid #334155; }
-    .table { color: #f8fafc; }
-    .clock-box { font-size: 1.5rem; font-weight: bold; color: #38bdf8; }
+    body { background-color: #0b1329; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; }
+    .panel-card { border-radius: 12px; background-color: #162238; border: 1px solid #223454; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .table { color: #f8fafc; vertical-align: middle; }
+    .clock-box { font-size: 1.2rem; font-weight: bold; color: #38bdf8; font-variant-numeric: tabular-nums; }
+    .btn-admin { border-color: #334155; color: #94a3b8; font-size: 0.85rem; }
+    .btn-admin:hover { background-color: #1e293b; color: #f8fafc; }
+    .filtro-input { background-color: #0f172a; border: 1px solid #334155; color: #fff; }
+    .filtro-input:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+    .sync-badge { font-size: 0.75rem; color: #94a3b8; }
+    
+    .logo-desktop {
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+    }
+    .logo-mobile {
+      height: 40px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .btn-switch {
+      padding: 9px 18px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border-radius: 10px;
+      transition: background-color 0.2s, color 0.2s;
+      outline: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .btn-switch-active,
+    .btn-switch-active:focus,
+    .btn-switch-active:active {
+      background-color: #38bdf8 !important;
+      color: #0b1329 !important;
+      border: 1px solid #38bdf8 !important;
+    }
+    
+    .btn-switch-inactive,
+    .btn-switch-inactive:focus {
+      background-color: #162238 !important;
+      color: #94a3b8 !important;
+      border: 1px solid #334155 !important;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .btn-switch-inactive:hover {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #475569 !important;
+      }
+    }
+
+    .btn-action-tel {
+      background-color: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 4px 10px;
+      font-size: 0.82rem;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-action-tel:hover { background-color: #0369a1; color: #fff; }
+    
+    .btn-action-wsp {
+      background-color: #16a34a;
+      color: #fff;
+      border: none;
+      padding: 4px 10px;
+      font-size: 0.82rem;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-action-wsp:hover { background-color: #15803d; color: #fff; }
+
+    .tabla-vacia {
+      color: #94a3b8 !important;
+      font-size: 0.92rem;
+      padding: 24px 0 !important;
+    }
+
+    .alerta-oscura {
+      background-color: rgba(220, 38, 38, 0.12) !important;
+      border: 1px solid rgba(239, 68, 68, 0.45) !important;
+      border-radius: 10px;
+      color: #cbd5e1 !important;
+      padding: 16px 20px;
+    }
+    .alerta-oscura strong {
+      color: #ffffff !important;
+    }
+    .alerta-oscura u {
+      color: #f87171 !important;
+      text-decoration: none;
+      font-weight: 600;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h2 class="mb-0 text-white font-weight-bold">PANEL DE GUARDIAS VIGENTES</h2>
-      <small class="text-secondary">Hospital - Visualización en Tiempo Real</small>
-    </div>
+  <!-- Barra Superior -->
+  <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3 flex-wrap gap-3">
+    
     <div class="d-flex align-items-center gap-3">
-      <a href="cargar.html" class="btn btn-outline-info btn-sm">➕ Cargar Guardia</a>
-      <div id="reloj" class="clock-box"></div>
+      <img src="https://trazahirs.com/images/logo_hirs_banner.png" 
+           onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1NQG63WbeI_nf1gDNrC5HR_JO2ieY0ohL';" 
+           alt="Hospital Italiano Regional del Sur" 
+           class="logo-desktop d-none d-md-block">
+
+      <img src="https://trazahirs.com/images/logo_hirs_escudo.png" 
+           onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1USDxCpANAUHIePsWM-mHkF6We3Ugo-jL';" 
+           alt="HIRS" 
+           class="logo-mobile d-block d-md-none">
+
+      <div>
+        <h2 class="mb-0 text-white fw-bold fs-4">PANEL DE GUARDIAS VIGENTES</h2>
+        <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+          <small class="text-secondary">Hospital Italiano - Tiempo Real</small>
+          <span class="text-secondary d-none d-sm-inline">•</span>
+          <span id="syncStatus" class="sync-badge"><i class="bi bi-arrow-repeat spin"></i> Conectando...</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+      <a href="cargar.html" 
+         class="btn btn-primary btn-sm fw-bold">
+        <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Cargar Guardia</span>
+      </a>
+
+      <button class="btn btn-outline-secondary btn-sm" onclick="forzarRefresco()" title="Actualizar datos ahora">
+        <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-sm-inline">Actualizar</span>
+      </button>
+
+      <div id="reloj" class="clock-box px-2"></div>
+
+      <button class="btn btn-admin btn-sm" onclick="abrirModalLogin()" id="btnAuth">
+        <i class="bi bi-shield-lock"></i> <span class="d-none d-sm-inline">Administrador</span>
+      </button>
     </div>
   </div>
 
-  <div class="row g-4">
-    <!-- Columna Guardias Activas -->
-    <div class="col-md-6">
-      <div class="card panel-card p-3">
-        <h4 class="text-success mb-3">● Guardias Activas Presenciales</h4>
-        <table class="table table-dark table-hover">
-          <thead>
-            <tr class="text-secondary">
-              <th>Servicio</th>
-              <th>Profesional</th>
-              <th>Interno / Contacto</th>
-            </tr>
-          </thead>
-          <tbody id="tablaActivas">
-            <tr><td colspan="3" class="text-center text-muted">Cargando guardias...</td></tr>
-          </tbody>
-        </table>
+  <!-- Selector Principal de Categorias -->
+  <div class="d-flex gap-2 mb-4 flex-wrap">
+    <button class="btn btn-switch btn-switch-active flex-fill flex-md-grow-0" id="btnTabTodos" onclick="filtrarCategoria('todas')">
+      <i class="bi bi-grid-fill me-1"></i> Toda la Guardia
+    </button>
+    <button class="btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0" id="btnTabProf" onclick="filtrarCategoria('profesional')">
+      <i class="bi bi-heart-pulse-fill me-1"></i> Guardias Profesionales
+    </button>
+    <button class="btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0" id="btnTabOper" onclick="filtrarCategoria('operativa')">
+      <i class="bi bi-tools me-1"></i> Guardias Operativas (Apoyo)
+    </button>
+  </div>
+
+  <!-- Vista Monitor Principal -->
+  <div class="row g-4 mb-5" id="vistaMonitor">
+    <div class="col-lg-6" id="colActivas">
+      <div class="card panel-card p-3 p-md-4 h-100">
+        <h4 class="text-success mb-3 d-flex align-items-center gap-2 fs-5">
+          <span class="spinner-grow spinner-grow-sm text-success" role="status"></span>
+          Guardias Activas (En Planta)
+        </h4>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr class="text-secondary border-secondary">
+                <th>Servicio</th>
+                <th>Profesional</th>
+                <th>Comunicarse</th>
+              </tr>
+            </thead>
+            <tbody id="tablaActivas">
+              <tr><td colspan="3" class="text-center tabla-vacia">Cargando datos...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- Columna Guardias Pasivas -->
-    <div class="col-md-6">
-      <div class="card panel-card p-3">
-        <h4 class="text-info mb-3">● Guardias Pasivas Activas Ahora</h4>
-        <table class="table table-dark table-hover">
-          <thead>
-            <tr class="text-secondary">
-              <th>Servicio Operativo/Apoyo</th>
-              <th>Responsable</th>
-              <th>Interno / Contacto</th>
-            </tr>
-          </thead>
-          <tbody id="tablaPasivas">
-            <tr><td colspan="3" class="text-center text-muted">Cargando pasivas...</td></tr>
-          </tbody>
-        </table>
+    <div class="col-lg-6" id="colPasivas">
+      <div class="card panel-card p-3 p-md-4 h-100">
+        <h4 class="text-info mb-3 d-flex align-items-center gap-2 fs-5">
+          <span class="spinner-grow spinner-grow-sm text-info" role="status"></span>
+          Guardias Pasivas
+        </h4>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr class="text-secondary border-secondary">
+                <th>Servicio Operativo / Apoyo</th>
+                <th>Responsable</th>
+                <th>Comunicarse</th>
+              </tr>
+            </thead>
+            <tbody id="tablaPasivas">
+              <tr><td colspan="3" class="text-center tabla-vacia">Cargando datos...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Sección Administrador -->
+  <div id="seccionAdmin" style="display: none;" class="card panel-card p-4 mb-4 border-info">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h4 class="text-warning mb-0 fs-5"><i class="bi bi-shield-check"></i> Panel de Control y Auditoria</h4>
+      <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesionAdmin()">
+        Cerrar Sesion
+      </button>
+    </div>
+
+    <!-- Alertas de Descubiertos -->
+    <div id="contenedorAlertas" class="mb-4" style="display: none;">
+      <div class="alerta-oscura d-flex align-items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill text-danger fs-4 mt-0"></i>
+        <div class="w-100">
+          <h6 class="text-danger fw-bold mb-2 fs-6">Servicios Criticos Sin Cobertura Detectada (Proximas 24/48 hs):</h6>
+          <div id="listaHuecos" class="small" style="line-height: 1.6;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones de Acción sobre Filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 pt-2 border-top border-secondary">
+      <h5 class="text-white mb-0 fs-6"><i class="bi bi-clock-history me-1"></i> Historial y Auditoria de Guardias</h5>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success btn-sm fw-bold" onclick="exportarExcelFiltrado()">
+          <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+        </button>
+        <a href="cargar.html" class="btn btn-primary btn-sm fw-bold">
+          <i class="bi bi-plus-circle"></i> Cargar Nueva Guardia
+        </a>
+      </div>
+    </div>
+
+    <!-- Filtros del Historial -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-3">
+        <label class="form-label text-secondary small">Buscar por Nombre o Contacto:</label>
+        <input type="text" id="filtroNombre" class="form-control form-control-sm filtro-input" placeholder="Ej: Perez / 1420..." oninput="filtrarHistorial()">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label text-secondary small">Servicio:</label>
+        <select id="filtroServicio" class="form-select form-select-sm filtro-input" onchange="filtrarHistorial()">
+          <option value="">Todos los servicios</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label text-secondary small">Desde:</label>
+        <input type="date" id="filtroDesde" class="form-control form-control-sm filtro-input" onchange="filtrarHistorial()">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label text-secondary small">Hasta:</label>
+        <input type="date" id="filtroHasta" class="form-control form-control-sm filtro-input" onchange="filtrarHistorial()">
+      </div>
+    </div>
+
+    <!-- Tabla Historial -->
+    <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+      <table class="table table-dark table-hover table-striped mb-0">
+        <thead class="sticky-top bg-dark">
+          <tr class="text-secondary border-secondary">
+            <th>Fecha Carga</th>
+            <th>Servicio</th>
+            <th>Tipo</th>
+            <th>Modalidad</th>
+            <th>Rango Cobertura</th>
+            <th>Responsable</th>
+            <th>Contacto</th>
+            <th>Accion</th>
+          </tr>
+        </thead>
+        <tbody id="tablaHistorial">
+          <tr><td colspan="8" class="text-center tabla-vacia">Cargando historial...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pie de página: Versión y Fecha de actualización -->
+  <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
+    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.0.0</strong></span>
+    <span class="mx-2">•</span>
+    <span>Ultima version: <strong id="lblFechaUpdate">07/09/2026</strong></span>
+  </footer>
+
+  <!-- Modal Login Admin -->
+  <div class="modal fade" id="modalLogin" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content bg-dark border-secondary text-white">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fs-6">PIN de Administrador</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="password" id="adminPin" class="form-control filtro-input text-center fs-5" placeholder="••••" maxlength="20">
+          <div id="loginError" class="text-danger small mt-2 text-center" style="display:none;">PIN incorrecto</div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-primary w-100" onclick="validarPin()">Ingresar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/dashboard.js"></script>
+  <script>
+    var tokenAdmin = sessionStorage.getItem("admin_pin") || null;
+    var historialCompleto = [];
+    var guardiasEnVivo = [];
+    var modalInstance = null;
+    var cargandoDatos = false;
+    var segundosDesdeUltimaSync = 0;
+    var filtroCategoriaActual = 'todas';
+    var INTERVALO_REFRESCO_SEG = 30;
+
+    var SERVICIOS_OPERATIVOS = ['Sistemas', 'Electromedicina', 'Farmacia', 'Mantenimiento', 'Esterilizacion', 'Instrumentadoras', 'Hemoterapia', 'RX Quirofano'];
+
+    function actualizarReloj() {
+      var now = new Date();
+      document.getElementById('reloj').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' | ' + now.toLocaleDateString();
+      
+      segundosDesdeUltimaSync++;
+      var elStatus = document.getElementById('syncStatus');
+      if (cargandoDatos) {
+        elStatus.innerHTML = '<i class="bi bi-arrow-repeat text-warning"></i> Sincronizando datos...';
+      } else {
+        var prox = INTERVALO_REFRESCO_SEG - segundosDesdeUltimaSync;
+        elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Actualizado hace ' + segundosDesdeUltimaSync + 's (proximo en ' + (prox > 0 ? prox : 0) + 's)';
+      }
+
+      if (segundosDesdeUltimaSync >= INTERVALO_REFRESCO_SEG) {
+        cargarDatos();
+      }
+    }
+    setInterval(actualizarReloj, 1000);
+    actualizarReloj();
+
+    function forzarRefresco() {
+      cargarDatos();
+      if (tokenAdmin) {
+        cargarHistorial();
+        cargarAlertas();
+      }
+    }
+
+    function filtrarCategoria(cat) {
+      filtroCategoriaActual = cat;
+      
+      var bTodos = document.getElementById('btnTabTodos');
+      var bProf = document.getElementById('btnTabProf');
+      var bOper = document.getElementById('btnTabOper');
+
+      bTodos.blur();
+      bProf.blur();
+      bOper.blur();
+
+      bTodos.className = cat === 'todas' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+      bProf.className = cat === 'profesional' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+      bOper.className = cat === 'operativa' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+
+      renderizarTablasEnVivo(guardiasEnVivo);
+    }
+
+    async function cargarDatos() {
+      if (cargandoDatos) return;
+      cargandoDatos = true;
+      var elStatus = document.getElementById('syncStatus');
+      if (elStatus) elStatus.innerHTML = '<i class="bi bi-arrow-repeat spin text-warning"></i> Actualizando...';
+
+      try {
+        if (!db) {
+          throw new Error("Base de datos no configurada en js/config.js");
+        }
+        var hoyStr = new Date().toISOString().split('T')[0];
+        const { data, error } = await db
+          .from('guardias')
+          .select('*')
+          .gte('fecha_fin', hoyStr);
+
+        if (error) throw error;
+
+        var ahora = new Date();
+        var listaRaw = data || [];
+        // Filtramos con el motor de turnos y mapeamos a camelCase
+        guardiasEnVivo = listaRaw
+          .map(function(r) {
+            return {
+              id: r.id,
+              servicio: r.servicio,
+              tipo: r.tipo,
+              modalidad: r.modalidad,
+              fechaInicio: r.fecha_inicio,
+              fechaFin: r.fecha_fin,
+              responsable: r.responsable,
+              contacto: r.contacto
+            };
+          })
+          .filter(function(g) {
+            return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, ahora) : true;
+          });
+
+        renderizarTablasEnVivo(guardiasEnVivo);
+        cargandoDatos = false;
+        segundosDesdeUltimaSync = 0;
+        if (elStatus) elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Conectado';
+
+      } catch(err) {
+        console.error("Error al obtener guardias:", err);
+        cargandoDatos = false;
+        segundosDesdeUltimaSync = 0;
+        if (elStatus) elStatus.innerHTML = '<i class="bi bi-exclamation-triangle text-danger"></i> ' + (err.message || 'Error de conexion');
+      }
+
+      if (tokenAdmin) {
+        cargarHistorial();
+        cargarAlertas();
+      }
+    }
+
+    function normalizarWhatsApp(tel) {
+      if (!tel) return null;
+      var num = String(tel).replace(/\D/g, '');
+      if (num.length <= 4) return null;
+      if (num.startsWith('0')) num = num.substring(1);
+      if (num.startsWith('15')) num = num.substring(2);
+      if (!num.startsWith('54')) num = '549' + num;
+      return num;
+    }
+
+    function generarBotonesContacto(contacto, servicio, responsable) {
+      var limpio = String(contacto || '').trim();
+      var wspNum = normalizarWhatsApp(limpio);
+      var html = '<div class="d-flex align-items-center gap-1 flex-wrap">';
+
+      html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar">' +
+                '<i class="bi bi-telephone-fill"></i> ' + limpio +
+              '</a>';
+
+      if (wspNum) {
+        var msg = encodeURIComponent('Hola ' + responsable + ', te contacto por la guardia de ' + servicio + ' en el Hospital Italiano.');
+        var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        var urlWsp = esMovil 
+          ? 'https://wa.me/' + wspNum + '?text=' + msg 
+          : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
+
+        html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
+                  '<i class="bi bi-whatsapp"></i> WSP' +
+                '</a>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderizarTablasEnVivo(guardias) {
+      var tAct = document.getElementById('tablaActivas');
+      var tPas = document.getElementById('tablaPasivas');
+      tAct.innerHTML = '';
+      tPas.innerHTML = '';
+
+      var activasCount = 0;
+      var pasivasCount = 0;
+
+      guardias.forEach(function(g) {
+        var esOperativo = SERVICIOS_OPERATIVOS.includes(g.servicio);
+        
+        if (filtroCategoriaActual === 'profesional' && esOperativo) return;
+        if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
+
+        var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable);
+        var row = '<tr>' +
+          '<td class="fw-bold text-white">' + g.servicio + '</td>' +
+          '<td>' + g.responsable + '</td>' +
+          '<td>' + btns + '</td>' +
+        '</tr>';
+
+        if (g.tipo === 'Activa') {
+          tAct.innerHTML += row;
+          activasCount++;
+        } else {
+          tPas.innerHTML += row;
+          pasivasCount++;
+        }
+      });
+
+      if (activasCount === 0) {
+        tAct.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias activas para la vista seleccionada.</td></tr>';
+      }
+      if (pasivasCount === 0) {
+        tPas.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin pasivas vigentes para la vista seleccionada.</td></tr>';
+      }
+    }
+
+    function abrirModalLogin() {
+      if (tokenAdmin) {
+        document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+      document.getElementById('adminPin').value = '';
+      document.getElementById('loginError').style.display = 'none';
+      modalInstance = new bootstrap.Modal(document.getElementById('modalLogin'));
+      modalInstance.show();
+    }
+
+    function validarPin() {
+      var pin = document.getElementById('adminPin').value;
+      // PIN administrativo (configurado en config.js o validado)
+      var pinCorrecto = (typeof ADMIN_PIN !== 'undefined') ? ADMIN_PIN : "1234";
+      if (pin === pinCorrecto) {
+        tokenAdmin = pin;
+        sessionStorage.setItem("admin_pin", pin);
+        modalInstance.hide();
+        activarModoAdmin();
+      } else {
+        document.getElementById('loginError').style.display = 'block';
+      }
+    }
+
+    function activarModoAdmin() {
+      document.getElementById('seccionAdmin').style.display = 'block';
+      document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-check text-success"></i> Admin Activo';
+      cargarHistorial();
+      cargarAlertas();
+      document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cerrarSesionAdmin() {
+      sessionStorage.removeItem("admin_pin");
+      tokenAdmin = null;
+      document.getElementById('seccionAdmin').style.display = 'none';
+      document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-lock"></i> Administrador';
+    }
+
+    async function cargarAlertas() {
+      if (!tokenAdmin || !db) return;
+      try {
+        var hoy = new Date();
+        var hoyStr = hoy.toISOString().split('T')[0];
+        
+        var manana = new Date();
+        manana.setDate(manana.getDate() + 1);
+        var mananaStr = manana.toISOString().split('T')[0];
+
+        // Consultamos guardias activas cargadas para hoy y manana
+        var { data } = await db.from('guardias')
+          .select('servicio, fecha_inicio, fecha_fin')
+          .gte('fecha_fin', hoyStr);
+
+        var criticos = ['Guardia externa Adultos', 'Guardia externa Pediatrica', 'Neonatologia', 'Cirugia General'];
+        var huecos = [];
+
+        criticos.forEach(function(serv) {
+          [hoyStr, mananaStr].forEach(function(fecha) {
+            var cubierto = (data || []).some(function(r) {
+              return r.servicio === serv && r.fecha_inicio <= fecha && r.fecha_fin >= fecha;
+            });
+            if (!cubierto) {
+              huecos.push({ servicio: serv, fecha: fecha });
+            }
+          });
+        });
+
+        var cont = document.getElementById('contenedorAlertas');
+        var lista = document.getElementById('listaHuecos');
+        if (huecos.length > 0) {
+          lista.innerHTML = huecos.map(function(h) {
+            return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
+          }).join('<br>');
+          cont.style.display = 'block';
+        } else {
+          cont.style.display = 'none';
+        }
+      } catch(e) {
+        console.error("Error al cargar alertas:", e);
+      }
+    }
+
+    async function cargarHistorial() {
+      if (!tokenAdmin || !db) return;
+      try {
+        var { data, error } = await db
+          .from('guardias')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        historialCompleto = (data || []).map(function(d) {
+          return {
+            id: d.id,
+            timestamp: d.created_at ? new Date(d.created_at).toLocaleString() : '',
+            servicio: d.servicio,
+            tipo: d.tipo,
+            modalidad: d.modalidad || 'Semanal/Bloque',
+            fechaInicio: d.fecha_inicio,
+            fechaFin: d.fecha_fin,
+            responsable: d.responsable,
+            contacto: d.contacto
+          };
+        });
+
+        llenarComboServicios(historialCompleto);
+        filtrarHistorial();
+      } catch(e) {
+        console.error("Error historial:", e);
+      }
+    }
+
+    function llenarComboServicios(data) {
+      var combo = document.getElementById('filtroServicio');
+      var previo = combo.value;
+      var servicios = [...new Set(data.map(function(d) { return d.servicio; }))].sort();
+      combo.innerHTML = '<option value="">Todos los servicios</option>';
+      servicios.forEach(function(s) { combo.innerHTML += '<option value="' + s + '">' + s + '</option>'; });
+      if (previo) combo.value = previo;
+    }
+
+    function filtrarHistorial() {
+      var txt = document.getElementById('filtroNombre').value.toLowerCase();
+      var serv = document.getElementById('filtroServicio').value;
+      var dDesde = document.getElementById('filtroDesde').value;
+      var dHasta = document.getElementById('filtroHasta').value;
+
+      var filtrados = historialCompleto.filter(function(item) {
+        var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt);
+        var coincideServ = !serv || item.servicio === serv;
+        var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
+        var coincideHasta = !dHasta || item.fechaFin <= dHasta;
+        return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+      });
+
+      renderizarTablaHistorial(filtrados);
+    }
+
+    function renderizarTablaHistorial(datos) {
+      var tbody = document.getElementById('tablaHistorial');
+      tbody.innerHTML = '';
+      if (datos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> No se encontraron guardias con esos filtros.</td></tr>';
+        return;
+      }
+      datos.forEach(function(d) {
+        tbody.innerHTML += '<tr>' +
+          '<td class="text-secondary small">' + d.timestamp + '</td>' +
+          '<td class="fw-bold">' + d.servicio + '</td>' +
+          '<td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td>' +
+          '<td><small>' + d.modalidad + '</small></td>' +
+          '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
+          '<td>' + d.responsable + '</td>' +
+          '<td class="text-warning">' + d.contacto + '</td>' +
+          '<td>' +
+            '<button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarFila(' + d.id + ')">' +
+              '<i class="bi bi-trash"></i>' +
+            '</button>' +
+          '</td>' +
+        '</tr>';
+      });
+    }
+
+    async function eliminarFila(id) {
+      if (!confirm('¿Seguro que deseas eliminar este registro de guardia?')) return;
+      try {
+        var { error } = await db.from('guardias').delete().eq('id', id);
+        if (error) throw error;
+        cargarHistorial();
+        cargarAlertas();
+        cargarDatos();
+      } catch(e) {
+        alert("Error al eliminar: " + e.message);
+      }
+    }
+
+    function exportarExcelFiltrado() {
+      var txt = document.getElementById('filtroNombre').value.toLowerCase();
+      var serv = document.getElementById('filtroServicio').value;
+      var dDesde = document.getElementById('filtroDesde').value;
+      var dHasta = document.getElementById('filtroHasta').value;
+
+      var filtrados = historialCompleto.filter(function(item) {
+        var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt);
+        var coincideServ = !serv || item.servicio === serv;
+        var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
+        var coincideHasta = !dHasta || item.fechaFin <= dHasta;
+        return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+      });
+
+      if (filtrados.length === 0) {
+        alert('No hay datos visibles con los filtros actuales para exportar.');
+        return;
+      }
+
+      var csvContenido = "Fecha Carga;Servicio;Tipo;Modalidad;Desde;Hasta;Responsable;Contacto\r\n";
+
+      filtrados.forEach(function(d) {
+        var fila = [
+          '"' + (d.timestamp || '') + '"',
+          '"' + (d.servicio || '') + '"',
+          '"' + (d.tipo || '') + '"',
+          '"' + (d.modalidad || '') + '"',
+          '"' + (d.fechaInicio || '') + '"',
+          '"' + (d.fechaFin || '') + '"',
+          '"' + (d.responsable || '') + '"',
+          '"' + (d.contacto || '') + '"'
+        ];
+        csvContenido += fila.join(";") + "\r\n";
+      });
+
+      var blob = new Blob(["\uFEFF" + csvContenido], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement("a");
+      var fechaHoy = new Date().toISOString().slice(0, 10);
+      var nombreArchivo = "Reporte_Guardias_HIRS_" + fechaHoy + ".csv";
+
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", nombreArchivo);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    if (tokenAdmin) activarModoAdmin();
+    cargarDatos();
+  </script>
 </body>
 </html>
