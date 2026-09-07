@@ -57,7 +57,9 @@ const REFERENTES_SERVICIOS = {
 };
 
 // Inicialización de cliente Supabase
-const SUPABASE_URL = 'https://xunxunzlnalvsejuybga.supabase.co'; // Tus credenciales actuales
+const SUPABASE_URL = 'https://xunxunzlnalvsejuybga.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Yjv8upcjMsYXiwssHX5W9Q_8DVIrqSp';
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = (typeof supabase !== 'undefined' && supabase.createClient)
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
