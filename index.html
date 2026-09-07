@@ -17,16 +17,8 @@
     .filtro-input:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
     .sync-badge { font-size: 0.75rem; color: #94a3b8; }
     
-    .logo-desktop {
-      height: 60px;
-      width: auto;
-      object-fit: contain;
-    }
-    .logo-mobile {
-      height: 40px;
-      width: auto;
-      object-fit: contain;
-    }
+    .logo-desktop { height: 60px; width: auto; object-fit: contain; }
+    .logo-mobile { height: 40px; width: auto; object-fit: contain; }
 
     .btn-switch {
       padding: 9px 18px;
@@ -90,11 +82,7 @@
     }
     .btn-action-wsp:hover { background-color: #15803d; color: #fff; }
 
-    .tabla-vacia {
-      color: #94a3b8 !important;
-      font-size: 0.92rem;
-      padding: 24px 0 !important;
-    }
+    .tabla-vacia { color: #94a3b8 !important; font-size: 0.92rem; padding: 24px 0 !important; }
 
     .alerta-oscura {
       background-color: rgba(220, 38, 38, 0.12) !important;
@@ -103,14 +91,8 @@
       color: #cbd5e1 !important;
       padding: 16px 20px;
     }
-    .alerta-oscura strong {
-      color: #ffffff !important;
-    }
-    .alerta-oscura u {
-      color: #f87171 !important;
-      text-decoration: none;
-      font-weight: 600;
-    }
+    .alerta-oscura strong { color: #ffffff !important; }
+    .alerta-oscura u { color: #f87171 !important; text-decoration: none; font-weight: 600; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -118,7 +100,6 @@
 
   <!-- Barra Superior -->
   <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3 flex-wrap gap-3">
-    
     <div class="d-flex align-items-center gap-3">
       <img src="https://trazahirs.com/images/logo_hirs_banner.png" 
            onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1NQG63WbeI_nf1gDNrC5HR_JO2ieY0ohL';" 
@@ -141,8 +122,7 @@
     </div>
     
     <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-      <a href="cargar.html" 
-         class="btn btn-primary btn-sm fw-bold">
+      <a href="cargar.html" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Cargar Guardia</span>
       </a>
 
@@ -224,9 +204,7 @@
   <div id="seccionAdmin" style="display: none;" class="card panel-card p-4 mb-4 border-info">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <h4 class="text-warning mb-0 fs-5"><i class="bi bi-shield-check"></i> Panel de Control y Auditoria</h4>
-      <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesionAdmin()">
-        Cerrar Sesion
-      </button>
+      <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesionAdmin()">Cerrar Sesion</button>
     </div>
 
     <!-- Alertas de Descubiertos -->
@@ -240,7 +218,7 @@
       </div>
     </div>
 
-    <!-- Botones de Acción sobre Filtros -->
+    <!-- Acciones sobre Historial -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 pt-2 border-top border-secondary">
       <h5 class="text-white mb-0 fs-6"><i class="bi bi-clock-history me-1"></i> Historial y Auditoria de Guardias</h5>
       <div class="d-flex gap-2">
@@ -297,7 +275,6 @@
     </div>
   </div>
 
-  <!-- Pie de página: Versión y Fecha de actualización -->
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
     <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.0.0</strong></span>
     <span class="mx-2">•</span>
@@ -336,8 +313,6 @@
     var filtroCategoriaActual = 'todas';
     var INTERVALO_REFRESCO_SEG = 30;
 
-   
-
     function actualizarReloj() {
       var now = new Date();
       document.getElementById('reloj').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' | ' + now.toLocaleDateString();
@@ -368,7 +343,6 @@
 
     function filtrarCategoria(cat) {
       filtroCategoriaActual = cat;
-      
       var bTodos = document.getElementById('btnTabTodos');
       var bProf = document.getElementById('btnTabProf');
       var bOper = document.getElementById('btnTabOper');
@@ -391,20 +365,24 @@
       if (elStatus) elStatus.innerHTML = '<i class="bi bi-arrow-repeat spin text-warning"></i> Actualizando...';
 
       try {
-        if (!db) {
-          throw new Error("Base de datos no configurada en js/config.js");
-        }
-        var hoyStr = new Date().toISOString().split('T')[0];
+        if (!db) throw new Error("Base de datos no configurada en js/config.js");
+
+        // Usamos fecha local en vez de UTC ISO para evitar saltos de día a la noche
+        var ahora = new Date();
+        var ayer = new Date(ahora);
+        ayer.setDate(ayer.getDate() - 1);
+        var ayerStr = (typeof formatearFechaLocalISO === 'function') 
+          ? formatearFechaLocalISO(ayer) 
+          : ayer.getFullYear() + '-' + String(ayer.getMonth()+1).padStart(2,'0') + '-' + String(ayer.getDate()).padStart(2,'0');
+
         const { data, error } = await db
           .from('guardias')
           .select('*')
-          .gte('fecha_fin', hoyStr);
+          .gte('fecha_fin', ayerStr);
 
         if (error) throw error;
 
-        var ahora = new Date();
         var listaRaw = data || [];
-        // Filtramos con el motor de turnos y mapeamos a camelCase
         guardiasEnVivo = listaRaw
           .map(function(r) {
             return {
@@ -483,9 +461,10 @@
 
       var activasCount = 0;
       var pasivasCount = 0;
+      var listaOperativos = (typeof SERVICIOS_OPERATIVOS !== 'undefined') ? SERVICIOS_OPERATIVOS : [];
 
       guardias.forEach(function(g) {
-        var esOperativo = SERVICIOS_OPERATIVOS.includes(g.servicio);
+        var esOperativo = listaOperativos.includes(g.servicio);
         
         if (filtroCategoriaActual === 'profesional' && esOperativo) return;
         if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
@@ -527,8 +506,7 @@
 
     function validarPin() {
       var pin = document.getElementById('adminPin').value;
-      // PIN administrativo (configurado en config.js o validado)
-      var pinCorrecto = (typeof ADMIN_PIN !== 'undefined') ? ADMIN_PIN : "1234";
+      var pinCorrecto = (typeof ADMIN_PIN !== 'undefined') ? ADMIN_PIN : "SistemasHirs$$675";
       if (pin === pinCorrecto) {
         tokenAdmin = pin;
         sessionStorage.setItem("admin_pin", pin);
@@ -554,69 +532,62 @@
       document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-lock"></i> Administrador';
     }
 
-   async function cargarAlertas() {
-  if (!tokenAdmin || !db) return;
-  try {
-    var hoy = new Date();
-    var manana = new Date();
-    manana.setDate(manana.getDate() + 1);
+    async function cargarAlertas() {
+      if (!tokenAdmin || !db) return;
+      try {
+        var hoy = new Date();
+        var manana = new Date();
+        manana.setDate(manana.getDate() + 1);
 
-    // Formatear YYYY-MM-DD en hora local
-    var toLocalISO = function(d) {
-      var y = d.getFullYear();
-      var m = String(d.getMonth() + 1).padStart(2, '0');
-      var dia = String(d.getDate()).padStart(2, '0');
-      return y + '-' + m + '-' + dia;
-    };
+        var toLocalISO = (typeof formatearFechaLocalISO === 'function') 
+          ? formatearFechaLocalISO 
+          : function(d) {
+              return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            };
 
-    var hoyStr = toLocalISO(hoy);
-    var mananaStr = toLocalISO(manana);
+        var hoyStr = toLocalISO(hoy);
+        var mananaStr = toLocalISO(manana);
 
-    // Traemos las guardias vigentes para hoy en adelante
-    var { data, error } = await db
-      .from('guardias')
-      .select('servicio, fecha_inicio, fecha_fin')
-      .gte('fecha_fin', hoyStr);
+        var { data, error } = await db
+          .from('guardias')
+          .select('servicio, fecha_inicio, fecha_fin')
+          .gte('fecha_fin', hoyStr);
 
-    if (error) throw error;
+        if (error) throw error;
 
-    // Usamos la lista de servicios críticos configurada en config.js
-    var listaCriticos = (typeof SERVICIOS_CRITICOS !== 'undefined') 
-      ? SERVICIOS_CRITICOS 
-      : ['Guardia externa Adultos', 'Guardia externa Pediatrica', 'Neonatologia', 'Cirugia General', 'Traumatologia', 'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 'Anestesia'];
+        var listaCriticos = (typeof SERVICIOS_CRITICOS !== 'undefined') ? SERVICIOS_CRITICOS : [];
+        var huecos = [];
+        var filas = data || [];
 
-    var huecos = [];
-    var filas = data || [];
+        [hoyStr, mananaStr].forEach(function(fechaEval) {
+          listaCriticos.forEach(function(srv) {
+            var cubierto = filas.some(function(r) {
+              var fIni = String(r.fecha_inicio).slice(0, 10);
+              var fFin = String(r.fecha_fin || r.fecha_inicio).slice(0, 10);
+              return r.servicio === srv && fechaEval >= fIni && fechaEval <= fFin;
+            });
 
-    [hoyStr, mananaStr].forEach(function(fechaEval) {
-      listaCriticos.forEach(function(srv) {
-        // Evalúa si algún registro cubre la fecha analizada (inclusive inicio y fin)
-        var cubierto = filas.some(function(r) {
-          var fIni = String(r.fecha_inicio).slice(0, 10);
-          var fFin = String(r.fecha_fin || r.fecha_inicio).slice(0, 10);
-          return r.servicio === srv && fechaEval >= fIni && fechaEval <= fFin;
+            if (!cubierto) {
+              huecos.push({ servicio: srv, fecha: fechaEval });
+            }
+          });
         });
 
-        if (!cubierto) {
-          huecos.push({ servicio: srv, fecha: fechaEval });
+        var cont = document.getElementById('contenedorAlertas');
+        var lista = document.getElementById('listaHuecos');
+        if (huecos.length > 0) {
+          lista.innerHTML = huecos.map(function(h) {
+            return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
+          }).join('<br>');
+          cont.style.display = 'block';
+        } else {
+          cont.style.display = 'none';
         }
-      });
-    });
-
-    var cont = document.getElementById('contenedorAlertas');
-    var lista = document.getElementById('listaHuecos');
-    if (huecos.length > 0) {
-      lista.innerHTML = huecos.map(function(h) {
-        return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
-      }).join('<br>');
-      cont.style.display = 'block';
-    } else {
-      cont.style.display = 'none';
+      } catch(e) {
+        console.error("Error al cargar alertas:", e);
+      }
     }
-  } catch(e) {
-    console.error("Error al cargar alertas:", e);
-  }
-}
+
     async function cargarHistorial() {
       if (!tokenAdmin || !db) return;
       try {
