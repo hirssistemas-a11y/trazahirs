@@ -686,26 +686,61 @@
       }
     }
 
-    function exportarExcelFiltrado() {
-      var txt = document.getElementById('filtroNombre').value.toLowerCase();
-      var serv = document.getElementById('filtroServicio').value;
-      var dDesde = document.getElementById('filtroDesde').value;
-      var dHasta = document.getElementById('filtroHasta').value;
+   function exportarExcelFiltrado() {
+  var txt = document.getElementById('filtroNombre').value.toLowerCase();
+  var serv = document.getElementById('filtroServicio').value;
+  var dDesde = document.getElementById('filtroDesde').value;
+  var dHasta = document.getElementById('filtroHasta').value;
 
-      var filtrados = historialCompleto.filter(function(item) {
-        var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt);
-        var coincideServ = !serv || item.servicio === serv;
-        var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
-        var coincideHasta = !dHasta || item.fechaFin <= dHasta;
-        return coincideTxt && coincideServ && coincideDesde && coincideHasta;
-      });
+  var filtrados = historialCompleto.filter(function(item) {
+    var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt);
+    var coincideServ = !serv || item.servicio === serv;
+    var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
+    var coincideHasta = !dHasta || item.fechaFin <= dHasta;
+    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+  });
 
-      if (filtrados.length === 0) {
-        alert('No hay datos visibles con los filtros actuales para exportar.');
-        return;
-      }
+  if (filtrados.length === 0) {
+    alert('No hay datos visibles con los filtros actuales para exportar.');
+    return;
+  }
 
-      var csvContenido = "Fecha Carga;Servicio;Tipo;Modalidad;Desde;Hasta;Responsable;Contacto\r\n";
+  // Estructuramos las filas con encabezados claros
+  var filasExcel = filtrados.map(function(d) {
+    return {
+      "Fecha Carga": d.timestamp || '',
+      "Servicio": d.servicio || '',
+      "Tipo": d.tipo || '',
+      "Modalidad": d.modalidad || '',
+      "Desde": d.fechaInicio || '',
+      "Hasta": d.fechaFin || '',
+      "Responsable": d.responsable || '',
+      "Contacto": d.contacto || ''
+    };
+  });
+
+  // Crear hoja y libro de cálculo
+  var ws = XLSX.utils.json_to_sheet(filasExcel);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Guardias");
+
+  // Autoajustar ancho básico de columnas
+  ws['!cols'] = [
+    { wch: 18 }, // Fecha Carga
+    { wch: 26 }, // Servicio
+    { wch: 10 }, // Tipo
+    { wch: 22 }, // Modalidad
+    { wch: 12 }, // Desde
+    { wch: 12 }, // Hasta
+    { wch: 24 }, // Responsable
+    { wch: 16 }  // Contacto
+  ];
+
+  var fechaHoy = new Date().toISOString().slice(0, 10);
+  var nombreArchivo = "Reporte_Guardias_HIRS_" + fechaHoy + ".xlsx";
+
+  XLSX.writeFile(wb, nombreArchivo);
+}
 
       filtrados.forEach(function(d) {
         var fila = [
