@@ -554,50 +554,69 @@
       document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-lock"></i> Administrador';
     }
 
-    async function cargarAlertas() {
-      if (!tokenAdmin || !db) return;
-      try {
-        var hoy = new Date();
-        var hoyStr = hoy.toISOString().split('T')[0];
-        
-        var manana = new Date();
-        manana.setDate(manana.getDate() + 1);
-        var mananaStr = manana.toISOString().split('T')[0];
+   async function cargarAlertas() {
+  if (!tokenAdmin || !db) return;
+  try {
+    var hoy = new Date();
+    var manana = new Date();
+    manana.setDate(manana.getDate() + 1);
 
-        // Consultamos guardias activas cargadas para hoy y manana
-        var { data } = await db.from('guardias')
-          .select('servicio, fecha_inicio, fecha_fin')
-          .gte('fecha_fin', hoyStr);
+    // Formatear YYYY-MM-DD en hora local
+    var toLocalISO = function(d) {
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var dia = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + dia;
+    };
 
-        var criticos = ['Guardia externa Adultos', 'Guardia externa Pediatrica', 'Neonatologia', 'Cirugia General'];
-        var huecos = [];
+    var hoyStr = toLocalISO(hoy);
+    var mananaStr = toLocalISO(manana);
 
-        criticos.forEach(function(serv) {
-          [hoyStr, mananaStr].forEach(function(fecha) {
-            var cubierto = (data || []).some(function(r) {
-              return r.servicio === serv && r.fecha_inicio <= fecha && r.fecha_fin >= fecha;
-            });
-            if (!cubierto) {
-              huecos.push({ servicio: serv, fecha: fecha });
-            }
-          });
+    // Traemos las guardias vigentes para hoy en adelante
+    var { data, error } = await db
+      .from('guardias')
+      .select('servicio, fecha_inicio, fecha_fin')
+      .gte('fecha_fin', hoyStr);
+
+    if (error) throw error;
+
+    // Usamos la lista de servicios críticos configurada en config.js
+    var listaCriticos = (typeof SERVICIOS_CRITICOS !== 'undefined') 
+      ? SERVICIOS_CRITICOS 
+      : ['Guardia externa Adultos', 'Guardia externa Pediatrica', 'Neonatologia', 'Cirugia General', 'Traumatologia', 'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 'Anestesia'];
+
+    var huecos = [];
+    var filas = data || [];
+
+    [hoyStr, mananaStr].forEach(function(fechaEval) {
+      listaCriticos.forEach(function(srv) {
+        // Evalúa si algún registro cubre la fecha analizada (inclusive inicio y fin)
+        var cubierto = filas.some(function(r) {
+          var fIni = String(r.fecha_inicio).slice(0, 10);
+          var fFin = String(r.fecha_fin || r.fecha_inicio).slice(0, 10);
+          return r.servicio === srv && fechaEval >= fIni && fechaEval <= fFin;
         });
 
-        var cont = document.getElementById('contenedorAlertas');
-        var lista = document.getElementById('listaHuecos');
-        if (huecos.length > 0) {
-          lista.innerHTML = huecos.map(function(h) {
-            return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
-          }).join('<br>');
-          cont.style.display = 'block';
-        } else {
-          cont.style.display = 'none';
+        if (!cubierto) {
+          huecos.push({ servicio: srv, fecha: fechaEval });
         }
-      } catch(e) {
-        console.error("Error al cargar alertas:", e);
-      }
-    }
+      });
+    });
 
+    var cont = document.getElementById('contenedorAlertas');
+    var lista = document.getElementById('listaHuecos');
+    if (huecos.length > 0) {
+      lista.innerHTML = huecos.map(function(h) {
+        return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
+      }).join('<br>');
+      cont.style.display = 'block';
+    } else {
+      cont.style.display = 'none';
+    }
+  } catch(e) {
+    console.error("Error al cargar alertas:", e);
+  }
+}
     async function cargarHistorial() {
       if (!tokenAdmin || !db) return;
       try {
