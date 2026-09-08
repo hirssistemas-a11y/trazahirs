@@ -90,7 +90,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
       }
     }
 
-    // Fallback Activa
+    // Fallback Activa por defecto
     var iniDef = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
     var finDef = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
     finDef.setDate(finDef.getDate() + 1);
@@ -110,36 +110,42 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var srv = guardia.servicio || '';
 
-  // Regla Ecografía
-  if (srv === 'Ecografia') {
+  // REGLA TÉCNICO DE IMÁGENES: Lunes a Viernes de 20:00 a 08:00 hs; Fines de semana las 24 hs
+  if (srv === 'Tecnico de Imagenes') {
     if (esFinde) return true;
-    return horaAhora >= 12 && horaAhora < 20;
+    return horaAhora >= 20 || horaAhora < 8;
   }
 
-  // Sistemas
-  if (srv === 'Sistemas') {
-    if (esFinde) return true;
-    return horaAhora >= 15;
-  }
-
-  // Electromedicina
-  if (srv === 'Electromedicina') {
-    if (esFinde) return true;
-    return horaAhora >= 13;
-  }
-
-  // Farmacia
-  if (srv === 'Farmacia') {
-    if (esFinde) return true;
-    return horaAhora >= 16;
-  }
-
-  // RX Quirófano
+  // REGLA RX QUIRÓFANO: Lunes a Viernes pasiva nocturna (20:00 a 08:00 hs); Fines de semana las 24 hs
   if (srv === 'RX Quirofano') {
     if (esFinde) return true;
     return horaAhora >= 20 || horaAhora < 8;
   }
 
-  // Resto de servicios pasivos continuos (Gastroenterologia, Ginecologia, Obstetricia, Tecnico de Imagenes, Mantenimiento, etc.):
+  // REGLA ECOGRAFÍA: Días de semana de 12:00 a 20:00 hs; Fines de semana las 24 hs
+  if (srv === 'Ecografia') {
+    if (esFinde) return true;
+    return horaAhora >= 12 && horaAhora < 20;
+  }
+
+  // Sistemas: Lunes a Viernes pasiva desde las 15:00 hs; Fines de semana las 24 hs
+  if (srv === 'Sistemas') {
+    if (esFinde) return true;
+    return horaAhora >= 15;
+  }
+
+  // Electromedicina: Lunes a Viernes pasiva desde las 13:00 hs; Fines de semana las 24 hs
+  if (srv === 'Electromedicina') {
+    if (esFinde) return true;
+    return horaAhora >= 13;
+  }
+
+  // Farmacia: Lunes a Viernes pasiva desde las 16:00 hs; Fines de semana las 24 hs
+  if (srv === 'Farmacia') {
+    if (esFinde) return true;
+    return horaAhora >= 16;
+  }
+
+  // Resto de servicios pasivos continuos (Gastroenterologia, Ginecologia, Obstetricia, Mantenimiento, etc.):
   return true;
 }
