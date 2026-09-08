@@ -15,7 +15,6 @@
     .btn-admin { border-color: #334155; color: #94a3b8; font-size: 0.85rem; }
     .btn-admin:hover { background-color: #1e293b; color: #f8fafc; }
 
-    /* Contraste estricto para que las letras se lean claramente */
     .form-control, .form-select, textarea, .filtro-input { 
       background-color: #0f172a !important; 
       border: 1px solid #334155 !important; 
@@ -271,6 +270,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 pt-2 border-top border-secondary">
       <h5 class="text-white mb-0 fs-6"><i class="bi bi-clock-history me-1"></i> Historial y Auditoria de Guardias</h5>
       <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-danger btn-sm fw-bold" onclick="abrirModalLogs()">
+          <i class="bi bi-journal-text"></i> Logs de Auditoría
+        </button>
         <button class="btn btn-outline-warning btn-sm fw-bold" onclick="abrirModalIncumplidas()">
           <i class="bi bi-exclamation-octagon-fill"></i> Incidentes de Guardia
         </button>
@@ -332,7 +334,7 @@
   </div>
 
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
-    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.3.1</strong></span>
+    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.4.0</strong></span>
     <span class="mx-2">•</span>
     <span>Última versión: <strong id="lblFechaUpdate">08/09/2026</strong></span>
   </footer>
@@ -373,13 +375,12 @@
             <div>Responsable: <strong id="confRepResponsable" class="text-white"></strong></div>
           </div>
 
-          <!-- Campo de motivo con contraste legible -->
           <div class="mb-1">
             <label class="form-label small text-secondary d-flex justify-content-between">
               <span>Detalle del incidente (Opcional):</span>
               <span id="charCount" class="text-info fw-bold">0/120</span>
             </label>
-            <textarea id="motivoIncidente" class="form-control" rows="3" maxlength="120" placeholder="Escriba brevemente el inconveniente..." oninput="actualizarContadorChar(this)"></textarea>
+            <textarea id="motivoIncidente" class="form-control" rows="3" maxlength="120" placeholder="Escriba brevemente el inconveniente o novedad..." oninput="actualizarContadorChar(this)"></textarea>
           </div>
         </div>
         <div class="modal-footer border-secondary d-flex justify-content-end gap-2">
@@ -390,7 +391,7 @@
     </div>
   </div>
 
-  <!-- Modal 2: Contacto del Jefe de Servicio (Post-reporte) -->
+  <!-- Modal 2: Contacto del Jefe de Servicio -->
   <div class="modal fade" id="modalContactoReferente" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-dark border-secondary text-white">
@@ -472,7 +473,7 @@
     </div>
   </div>
 
-  <!-- Modal 4: Auditoría de Incidentes de Guardia -->
+  <!-- Modal 4: Incidentes de Guardia -->
   <div class="modal fade" id="modalIncumplidas" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
       <div class="modal-content bg-dark border-danger text-white">
@@ -511,9 +512,47 @@
     </div>
   </div>
 
+  <!-- Modal 5: Historial de Logs Irreplicable -->
+  <div class="modal fade" id="modalLogs" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+      <div class="modal-content bg-dark border-secondary text-white">
+        <div class="modal-header border-secondary">
+          <div class="d-flex align-items-center justify-content-between w-100 pe-3 flex-wrap gap-2">
+            <h5 class="modal-title fs-6 text-danger">
+              <i class="bi bi-shield-lock-fill me-2"></i> Historial Inmutable de Acciones y Modificaciones (Logs)
+            </h5>
+            <button class="btn btn-success btn-sm fw-bold" onclick="exportarExcelLogs()">
+              <i class="bi bi-file-earmark-excel"></i> Exportar Logs (.xlsx)
+            </button>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive" style="max-height: 460px; overflow-y: auto;">
+            <table class="table table-dark table-hover table-striped mb-0">
+              <thead class="sticky-top bg-dark text-secondary small">
+                <tr>
+                  <th>Fecha/Hora</th>
+                  <th>Acción</th>
+                  <th>ID Reg.</th>
+                  <th>Servicio</th>
+                  <th>Responsable</th>
+                  <th>Detalle Operativo</th>
+                </tr>
+              </thead>
+              <tbody id="tablaLogsBody" class="small">
+                <tr><td colspan="6" class="text-center tabla-vacia">Cargando logs de auditoría...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/dashboard.js?v=6"></script>
+  <script src="js/dashboard.js?v=7"></script>
 </body>
 </html>
