@@ -81,7 +81,7 @@
               <option value="Anestesista">Anestesista</option>
               <option value="Tecnico de Anestesia">Tecnico de Anestesia</option>
               <option value="Ecografia">Ecografia</option>
-              <option value="IGEA">IGEA</option>
+              <option value="Gastroenterologia">Gastroenterologia</option>
               <option value="Tecnico de Imagenes">Tecnico de Imagenes</option>
             </optgroup>
             <optgroup label="Servicios Operativos / Apoyo">
@@ -176,6 +176,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=5"></script>
+  <script src="js/formulario.js?v=6"></script>
 </body>
 </html>
