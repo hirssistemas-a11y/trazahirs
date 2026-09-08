@@ -19,7 +19,7 @@ const SERVICIOS_CRITICOS = [
   'Tecnico de Anestesia',
   'Ecografia',
   'Tecnico de Imagenes',
-  'IGEA'
+  'Gastroenterologia'
 ];
 
 // Servicios que se clasifican en la pestaña "Guardias Operativas (Apoyo)"
@@ -51,7 +51,7 @@ const REFERENTES_SERVICIOS = {
   'Tecnico de Anestesia': { nombre: 'Coordinación Técnicos Anestesia', contacto: '2914000009' },
   'Ecografia': { nombre: 'Jefatura Ecografía', contacto: '2914000010' },
   'Tecnico de Imagenes': { nombre: 'Coordinación Imágenes', contacto: '2914000011' },
-  'IGEA': { nombre: 'Referente IGEA', contacto: '2914000012' },
+  'Gastroenterologia': { nombre: 'Referente Gastroenterología', contacto: '2914000012' },
   'Sistemas': { nombre: 'Guardia/Jefatura Sistemas', contacto: '2914000013' },
   'Electromedicina': { nombre: 'Referente Electromedicina', contacto: '2914000014' },
   'Farmacia': { nombre: 'Jefatura Farmacia', contacto: '2914000015' },
