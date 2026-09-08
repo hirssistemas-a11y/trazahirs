@@ -80,8 +80,8 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 1. Guardia Externa: mantiene selección de 6, 12 y 24 hs
-  if (srv.includes('Guardia externa')) {
+  // 1. Servicios con turnos configurables de 6, 12 y 24 hs (Guardia externa y UTI)
+  if (srv.includes('Guardia externa') || srv === 'UTI') {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
     colTipo.className = 'col-md-4';
@@ -91,17 +91,15 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 2. Todos los demás servicios: modalidad fijada en 24 hs
+  // 2. Servicios restantes: modalidad fija en 24 hs
   colDuracion.style.display = 'none';
   colTipo.className = 'col-md-4';
   colModalidad.className = 'col-md-8';
 
-  // Servicios con guardia ACTIVA (En Planta)
   const serviciosActivos = [
     'Neonatologia', 
     'Cirugia General', 
     'Traumatologia', 
-    'UTI',
     'Cardiologia/Unidad Coronaria', 
     'Parteras', 
     'Laboratorio', 
@@ -113,7 +111,6 @@ function actualizarHorariosSegunServicio() {
   if (serviciosActivos.includes(srv)) {
     selTipo.value = 'Activa';
   } else {
-    // Hemodinamia, Gastroenterologia, Ginecologia, Obstetricia, etc. son Pasivas
     selTipo.value = 'Pasiva';
   }
   selTipo.disabled = true;
