@@ -48,7 +48,7 @@ function cambiarModoCalendario(mode) {
   }
 }
 
-// Generación de bloques de 6, 12 y 24 hs arrancando a las 08:00 AM
+// Generación de bloques de 6, 12 y 24 hs arrancando a las 08:00 AM (Exclusivo Guardia Externa)
 function actualizarFranjasHorarias() {
   const dur = selDuracion.value;
   selModalidad.innerHTML = '';
@@ -72,7 +72,7 @@ function actualizarFranjasHorarias() {
   }
 }
 
-// Parametrización dinámica según el servicio
+// Parametrización dinámica: Solo Guardia Externa tiene variantes; el resto queda fijado en 24 hs
 function actualizarHorariosSegunServicio() {
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
@@ -85,7 +85,7 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 1. Guardias Externas (Adultos y Pediátrica): habilita 6, 12 y 24 hs iniciando a las 08:00 AM
+  // 1. Guardia Externa (Adultos y Pediátrica): habilita 6, 12 y 24 hs
   if (srv.includes('Guardia externa')) {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
@@ -96,59 +96,29 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // Si no es guardia externa, ocultamos la duración intermedia
+  // 2. Todos los demás servicios: Ocultar selector intermedio y fijar solo en 24 hs
   colDuracion.style.display = 'none';
   colTipo.className = 'col-md-4';
   colModalidad.className = 'col-md-8';
 
-  // 2. Servicios Médicos de Planta Activa (24 hs o 12 hs Diurna/Nocturna)
-  const serviciosMedicosActivos = [
+  // Clasificación de Tipo (Activa vs Pasiva)
+  const serviciosActivos = [
     'Neonatologia', 'Cirugia General', 'Traumatologia', 
     'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 
     'Anestesia', 'Instrumentadoras'
   ];
 
-  // 3. Servicios Médicos y Técnicos con Guardias Pasivas (A Demanda continua)
-  const serviciosMedicosPasivos = [
-    'Ecografia', 'IGEA', 'Tecnico de Imagenes'
-  ];
-
-  // 4. Servicios Operativos Mixtos (L-V tarde/noche y Fines de semana 24 hs)
-  const serviciosOperativosMixtos = [
-    'Sistemas', 'Electromedicina', 'Farmacia', 
-    'Esterilizacion', 'Hemoterapia', 'RX Quirofano'
-  ];
-
-  if (serviciosMedicosActivos.includes(srv)) {
+  if (serviciosActivos.includes(srv)) {
     selTipo.value = 'Activa';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-    `;
-  } else if (serviciosMedicosPasivos.includes(srv) || srv === 'Mantenimiento') {
-    selTipo.value = 'Pasiva';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Pasiva a Demanda (24 hs continua a llamado)</option>
-    `;
-  } else if (serviciosOperativosMixtos.includes(srv)) {
-    selTipo.value = 'Pasiva';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Pasiva Institucional (L-V tarde/noche - Sáb/Dom 24hs)</option>
-      <option value="24 hs (08:00-08:00)">24 hs (Refuerzo Fin de semana / Feriado)</option>
-    `;
   } else {
-    selTipo.disabled = false;
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-      <option value="Turno Rotativo / Pasiva">Turno Continuo / Pasiva</option>
-    `;
+    selTipo.value = 'Pasiva';
   }
+  selTipo.disabled = true;
+
+  // Modalidad fijada exclusivamente en 24 hs para todos los servicios fuera de Guardia Externa
+  selModalidad.innerHTML = `
+    <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
+  `;
 }
 
 selServicio.addEventListener('change', actualizarHorariosSegunServicio);
