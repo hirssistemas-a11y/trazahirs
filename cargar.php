@@ -60,7 +60,7 @@
     </div>
 
     <div class="card card-form p-4">
-      <form id="formGuardia">
+      <form id="formGuardia" autocomplete="off">
 
         <!-- Servicio -->
         <div class="mb-3">
@@ -137,27 +137,37 @@
               <i class="bi bi-calendar-week"></i> Días Específicos
             </button>
           </div>
-          <input type="text" id="selectorFechas" class="form-control" placeholder="Seleccione fecha(s)..." required>
+          <input type="text" id="selectorFechas" class="form-control" placeholder="Seleccione fecha(s)..." required autocomplete="off">
           <div class="form-text" id="ayudaFechas">Seleccione una fecha de inicio y una de fin para cubrir el bloque.</div>
         </div>
 
         <!-- Profesional / Responsable -->
         <div class="mb-3">
           <label class="form-label text-light fw-bold small">Nombre y Apellido del Responsable *</label>
-          <input type="text" id="responsable" class="form-control" placeholder="Ej: Dr. Pérez Juan" required>
+          <input type="text" id="responsable" name="responsable_nombre" class="form-control" placeholder="Ej: Dr. Pérez Juan" required autocomplete="off">
         </div>
 
         <!-- Contactos -->
         <div class="row g-3 mb-4">
           <div class="col-md-7">
             <label class="form-label text-light fw-bold small">WhatsApp / Teléfono Móvil *</label>
-            <input type="tel" id="contacto" class="form-control" placeholder="Ej: 2914123456" required>
+            <input type="tel" id="contacto" name="telefono_guardia" class="form-control" placeholder="Ej: 2914123456" required autocomplete="off">
             <div class="form-text">Sin 0 ni 15. Usado para llamadas y chat directo de WhatsApp.</div>
           </div>
 
           <div class="col-md-5">
             <label class="form-label text-light fw-bold small">Número Interno (Opcional)</label>
-            <input type="text" id="interno" class="form-control" placeholder="Ej: 1420">
+            <input 
+              type="text" 
+              id="interno" 
+              name="interno_hospitalario_hirs" 
+              class="form-control" 
+              placeholder="Ej: 1420" 
+              autocomplete="off" 
+              autocorrect="off" 
+              autocapitalize="off" 
+              spellcheck="false" 
+              inputmode="numeric">
             <div class="form-text">Interno estático para consulta visual en planta.</div>
           </div>
         </div>
@@ -176,6 +186,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=6"></script>
+  <script src="js/formulario.js?v=7"></script>
 </body>
 </html>
