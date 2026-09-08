@@ -13,7 +13,6 @@
     body { background-color: #0b1329; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; }
     .card-form { border-radius: 12px; background-color: #162238; border: 1px solid #223454; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     
-    /* Corrección de color de texto para evitar negro sobre negro */
     .form-control, .form-select { 
       background-color: #0f172a !important; 
       border: 1px solid #334155 !important; 
@@ -105,10 +104,10 @@
             </select>
           </div>
 
-          <!-- Duración del Turno (Para Guardia Externa) -->
+          <!-- Duración del Turno (Visible SOLO para Guardia Externa) -->
           <div class="col-md-4" id="colDuracion" style="display: none;">
             <label class="form-label text-light fw-bold small">Duración del Turno *</label>
-            <select id="duracionTurno" class="form-select" onchange="actualizarFranjasHorarias()">
+            <select id="duracionTurno" class="form-select">
               <option value="24">24 Horas</option>
               <option value="12">12 Horas</option>
               <option value="6">6 Horas</option>
@@ -119,7 +118,7 @@
           <div class="col-md-8" id="colModalidad">
             <label class="form-label text-light fw-bold small">Modalidad / Franja Horaria *</label>
             <select id="modalidad" class="form-select" required>
-              <option value="">-- Seleccione un servicio primero --</option>
+              <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
             </select>
           </div>
         </div>
@@ -174,6 +173,7 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js"></script>
+  <!-- Agregamos query param ?v=2 para forzar la recarga sin caché -->
+  <script src="js/formulario.js?v=2"></script>
 </body>
 </html>
