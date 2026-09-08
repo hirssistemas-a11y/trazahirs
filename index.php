@@ -155,7 +155,7 @@
     </div>
     
     <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-      <a href="cargar.html" class="btn btn-primary btn-sm fw-bold">
+      <a href="cargar.php" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Cargar Guardia</span>
       </a>
 
@@ -264,7 +264,7 @@
         <button class="btn btn-success btn-sm fw-bold" onclick="exportarExcelFiltrado()">
           <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
         </button>
-        <a href="cargar.html" class="btn btn-primary btn-sm fw-bold">
+        <a href="cargar.php" class="btn btn-primary btn-sm fw-bold">
           <i class="bi bi-plus-circle"></i> Cargar Nueva Guardia
         </a>
       </div>
@@ -406,12 +406,10 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <!-- Formulario rápido alta/modificación -->
           <form id="formJefe" class="row g-2 mb-3 align-items-end p-2 border border-secondary rounded bg-black bg-opacity-25" onsubmit="guardarJefeServicio(event)">
             <div class="col-md-4">
               <label class="form-label small text-secondary">Servicio:</label>
               <select id="jefeSelServicio" class="form-select form-select-sm filtro-input" required>
-                <!-- Llenado dinámico -->
               </select>
             </div>
             <div class="col-md-4">
@@ -491,6 +489,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/dashboard.js?v=3"></script>
+  <script src="js/dashboard.js?v=4"></script>
 </body>
 </html>
