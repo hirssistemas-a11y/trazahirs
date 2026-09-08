@@ -1,7 +1,6 @@
 <?php
 require '../defs/auth.php';
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -338,7 +337,7 @@ require '../defs/auth.php';
   </div>
 
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
-    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.4.0</strong></span>
+    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.4.2</strong></span>
     <span class="mx-2">•</span>
     <span>Última versión: <strong id="lblFechaUpdate">08/09/2026</strong></span>
   </footer>
@@ -557,6 +556,6 @@ require '../defs/auth.php';
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/dashboard.js?v=7"></script>
+  <script src="js/dashboard.js?v=9"></script>
 </body>
 </html>
