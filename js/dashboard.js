@@ -1,245 +1,494 @@
 // ==========================================
-// CONTROLADOR DEL FORMULARIO DE CARGA (HIRS)
+// CONTROLADOR DEL MONITOR EN VIVO (HIRS)
 // ==========================================
 
-var fpInstance = null;
-var modoActual = 'range';
+var tokenAdmin = sessionStorage.getItem("admin_pin") || null;
+var historialCompleto = [];
+var guardiasEnVivo = [];
+var modalInstance = null;
+var modalReporteInstance = null;
+var cargandoDatos = false;
+var segundosDesdeUltimaSync = 0;
+var filtroCategoriaActual = 'todas';
+var INTERVALO_REFRESCO_SEG = 30;
 
-const selServicio = document.getElementById('servicio');
-const selTipo = document.getElementById('tipo');
-const selDuracion = document.getElementById('duracionTurno');
-const colDuracion = document.getElementById('colDuracion');
-const colModalidad = document.getElementById('colModalidad');
-const colTipo = document.getElementById('colTipo');
-const selModalidad = document.getElementById('modalidad');
-const formGuardia = document.getElementById('formGuardia');
-
-// Inicialización de Flatpickr
-function initFlatpickr(mode) {
-  if (fpInstance) fpInstance.destroy();
-  modoActual = mode;
-  fpInstance = flatpickr("#selectorFechas", {
-    mode: mode,
-    locale: "es",
-    dateFormat: "Y-m-d",
-    altInput: true,
-    altFormat: "d/m/Y",
-    conjunction: " | ",
-    minDate: "today"
-  });
-}
-
-function cambiarModoCalendario(mode) {
-  document.getElementById('selectorFechas').value = '';
-  initFlatpickr(mode);
+function actualizarReloj() {
+  var now = new Date();
+  document.getElementById('reloj').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' | ' + now.toLocaleDateString();
   
-  const bRango = document.getElementById('btnModoRango');
-  const bDias = document.getElementById('btnModoDias');
-  const ayuda = document.getElementById('ayudaFechas');
-
-  if (mode === 'range') {
-    bRango.className = 'btn btn-outline-info btn-sm';
-    bDias.className = 'btn btn-outline-secondary btn-sm';
-    ayuda.innerText = 'Seleccione una fecha de inicio y una de fin para cubrir todo el bloque continuo.';
+  segundosDesdeUltimaSync++;
+  var elStatus = document.getElementById('syncStatus');
+  if (cargandoDatos) {
+    elStatus.innerHTML = '<i class="bi bi-arrow-repeat text-warning"></i> Sincronizando datos...';
   } else {
-    bRango.className = 'btn btn-outline-secondary btn-sm';
-    bDias.className = 'btn btn-outline-info btn-sm';
-    ayuda.innerText = 'Haga clic en cada uno de los días específicos en los que cubrirá guardia.';
+    var prox = INTERVALO_REFRESCO_SEG - segundosDesdeUltimaSync;
+    elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Actualizado hace ' + segundosDesdeUltimaSync + 's (próximo en ' + (prox > 0 ? prox : 0) + 's)';
+  }
+
+  if (segundosDesdeUltimaSync >= INTERVALO_REFRESCO_SEG) {
+    cargarDatos();
+  }
+}
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
+
+function forzarRefresco() {
+  cargarDatos();
+  if (tokenAdmin) {
+    cargarHistorial();
+    cargarAlertas();
   }
 }
 
-// Generación de bloques de 6, 12 y 24 hs arrancando a las 08:00 AM
-function actualizarFranjasHorarias() {
-  const dur = selDuracion.value;
-  selModalidad.innerHTML = '';
+function filtrarCategoria(cat) {
+  filtroCategoriaActual = cat;
+  var bTodos = document.getElementById('btnTabTodos');
+  var bProf = document.getElementById('btnTabProf');
+  var bOper = document.getElementById('btnTabOper');
 
-  if (dur === '24') {
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-    `;
-  } else if (dur === '12') {
-    selModalidad.innerHTML = `
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-    `;
-  } else if (dur === '6') {
-    selModalidad.innerHTML = `
-      <option value="6 hs Mañana (08:00-14:00)">6 hs Mañana (08:00 a 14:00)</option>
-      <option value="6 hs Tarde (14:00-20:00)">6 hs Tarde (14:00 a 20:00)</option>
-      <option value="6 hs Noche (20:00-02:00)">6 hs Noche (20:00 a 02:00)</option>
-      <option value="6 hs Trasnoche (02:00-08:00)">6 hs Trasnoche (02:00 a 08:00)</option>
-    `;
-  }
+  bTodos.blur();
+  bProf.blur();
+  bOper.blur();
+
+  bTodos.className = cat === 'todas' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+  bProf.className = cat === 'profesional' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+  bOper.className = cat === 'operativa' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+
+  renderizarTablasEnVivo(guardiasEnVivo);
 }
 
-// Parametrización dinámica según el servicio
-function actualizarHorariosSegunServicio() {
-  const srv = selServicio.value;
-  selModalidad.innerHTML = '';
-
-  if (!srv) {
-    colDuracion.style.display = 'none';
-    colTipo.className = 'col-md-6';
-    colModalidad.className = 'col-md-6';
-    selModalidad.innerHTML = '<option value="">-- Seleccione un servicio primero --</option>';
-    return;
-  }
-
-  // 1. Guardias Externas (Adultos y Pediátrica): habilita 6, 12 y 24 hs iniciando a las 08:00 AM
-  if (srv.includes('Guardia externa')) {
-    selTipo.value = 'Activa';
-    selTipo.disabled = true;
-    colTipo.className = 'col-md-4';
-    colDuracion.style.display = 'block';
-    colModalidad.className = 'col-md-4';
-    actualizarFranjasHorarias();
-    return;
-  }
-
-  // Si no es guardia externa, ocultamos la duración intermedia
-  colDuracion.style.display = 'none';
-  colTipo.className = 'col-md-4';
-  colModalidad.className = 'col-md-8';
-
-  // 2. Servicios Médicos de Planta Activa (24 hs o 12 hs Diurna/Nocturna)
-  const serviciosMedicosActivos = [
-    'Neonatologia', 'Cirugia General', 'Traumatologia', 
-    'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 
-    'Anestesia', 'Instrumentadoras'
-  ];
-
-  // 3. Servicios Médicos y Técnicos con Guardias Pasivas (A Demanda continua)
-  const serviciosMedicosPasivos = [
-    'Ecografia', 'IGEA', 'Tecnico de Imagenes'
-  ];
-
-  // 4. Servicios Operativos Mixtos (L-V tarde/noche y Fines de semana 24 hs)
-  const serviciosOperativosMixtos = [
-    'Sistemas', 'Electromedicina', 'Farmacia', 
-    'Esterilizacion', 'Hemoterapia', 'RX Quirofano'
-  ];
-
-  if (serviciosMedicosActivos.includes(srv)) {
-    selTipo.value = 'Activa';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-    `;
-  } else if (serviciosMedicosPasivos.includes(srv) || srv === 'Mantenimiento') {
-    selTipo.value = 'Pasiva';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Pasiva a Demanda (24 hs continua a llamado)</option>
-    `;
-  } else if (serviciosOperativosMixtos.includes(srv)) {
-    selTipo.value = 'Pasiva';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Pasiva Institucional (L-V tarde/noche - Sáb/Dom 24hs)</option>
-      <option value="24 hs (08:00-08:00)">24 hs (Refuerzo Fin de semana / Feriado)</option>
-    `;
-  } else {
-    selTipo.disabled = false;
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-      <option value="Turno Rotativo / Pasiva">Turno Continuo / Pasiva</option>
-    `;
-  }
-}
-
-selServicio.addEventListener('change', actualizarHorariosSegunServicio);
-
-// Envío a Supabase
-formGuardia.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const btn = document.getElementById('btnGuardar');
-  const feed = document.getElementById('alertaFeedback');
-  feed.style.display = 'none';
-
-  if (!fpInstance || fpInstance.selectedDates.length === 0) {
-    feed.className = 'alert alert-warning';
-    feed.innerText = 'Debe seleccionar al menos una fecha o rango.';
-    feed.style.display = 'block';
-    return;
-  }
-
-  if (!db) {
-    feed.className = 'alert alert-danger';
-    feed.innerText = 'Error: Base de datos Supabase no conectada. Verifique js/config.js.';
-    feed.style.display = 'block';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando registros...';
+async function cargarDatos() {
+  if (cargandoDatos) return;
+  cargandoDatos = true;
+  var elStatus = document.getElementById('syncStatus');
+  if (elStatus) elStatus.innerHTML = '<i class="bi bi-arrow-repeat spin text-warning"></i> Actualizando...';
 
   try {
-    const servicioValor = selServicio.value;
-    const tipoValor = selTipo.value;
-    const modalidadValor = selModalidad.value;
-    const respValor = document.getElementById('responsable').value.trim();
-    const contactoValor = document.getElementById('contacto').value.trim();
-    const internoValor = document.getElementById('interno').value.trim();
+    if (!db) throw new Error("Base de datos no configurada en js/config.js");
 
-    const fechasParaInsertar = [];
-
-    if (modoActual === 'range') {
-      const fIni = fpInstance.selectedDates[0];
-      const fFin = fpInstance.selectedDates[1] || fIni;
-      fechasParaInsertar.push({
-        inicio: formatearFechaLocalISO(fIni),
-        fin: formatearFechaLocalISO(fFin)
-      });
-    } else {
-      fpInstance.selectedDates.forEach(function(d) {
-        const str = formatearFechaLocalISO(d);
-        fechasParaInsertar.push({ inicio: str, fin: str });
-      });
-    }
-
-    const filas = fechasParaInsertar.map(function(item) {
-      return {
-        servicio: servicioValor,
-        tipo: tipoValor,
-        modalidad: modalidadValor,
-        fecha_inicio: item.inicio,
-        fecha_fin: item.fin,
-        responsable: respValor,
-        contacto: contactoValor,
-        interno: internoValor || null
-      };
-    });
+    var ahora = new Date();
+    var ayer = new Date(ahora);
+    ayer.setDate(ayer.getDate() - 1);
+    var ayerStr = formatearFechaLocalISO(ayer);
 
     const { data, error } = await db
       .from('guardias')
-      .insert(filas);
+      .select('*')
+      .gte('fecha_fin', ayerStr);
 
     if (error) throw error;
 
-    feed.className = 'alert alert-success';
-    feed.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Se registraron exitosamente ' + filas.length + ' guardia(s).';
-    feed.style.display = 'block';
+    var listaRaw = data || [];
+    guardiasEnVivo = listaRaw
+      .map(function(r) {
+        return {
+          id: r.id,
+          servicio: r.servicio,
+          tipo: r.tipo,
+          modalidad: r.modalidad,
+          fechaInicio: r.fecha_inicio,
+          fechaFin: r.fecha_fin,
+          responsable: r.responsable,
+          contacto: r.contacto,
+          interno: r.interno
+        };
+      })
+      .filter(function(g) {
+        return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, ahora) : true;
+      });
 
-    document.getElementById('responsable').value = '';
-    document.getElementById('contacto').value = '';
-    document.getElementById('interno').value = '';
-    document.getElementById('selectorFechas').value = '';
-    initFlatpickr(modoActual);
+    renderizarTablasEnVivo(guardiasEnVivo);
+    cargandoDatos = false;
+    segundosDesdeUltimaSync = 0;
+    if (elStatus) elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Conectado';
 
-  } catch (err) {
-    console.error("Error al registrar:", err);
-    feed.className = 'alert alert-danger';
-    feed.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i> Error: ' + (err.message || 'No se pudo guardar');
-    feed.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Asignación de Guardia';
+  } catch(err) {
+    console.error("Error al obtener guardias:", err);
+    cargandoDatos = false;
+    segundosDesdeUltimaSync = 0;
+    if (elStatus) elStatus.innerHTML = '<i class="bi bi-exclamation-triangle text-danger"></i> ' + (err.message || 'Error de conexión');
   }
-});
 
-initFlatpickr('range');
-actualizarHorariosSegunServicio();
+  if (tokenAdmin) {
+    cargarHistorial();
+    cargarAlertas();
+  }
+}
+
+function normalizarWhatsApp(tel) {
+  if (!tel) return null;
+  var num = String(tel).replace(/\D/g, '');
+  if (num.length <= 4) return null;
+  if (num.startsWith('0')) num = num.substring(1);
+  if (num.startsWith('15')) num = num.substring(2);
+  if (!num.startsWith('54')) num = '549' + num;
+  return num;
+}
+
+function generarBotonesContacto(contacto, servicio, responsable, interno) {
+  var limpio = String(contacto || '').trim();
+  var wspNum = normalizarWhatsApp(limpio);
+  var html = '<div class="d-flex align-items-center gap-1 flex-wrap">';
+
+  // Botón Llamar
+  if (limpio) {
+    html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar">' +
+              '<i class="bi bi-telephone-fill"></i> ' + limpio +
+            '</a>';
+  }
+
+  // Botón WhatsApp
+  if (wspNum) {
+    var msg = encodeURIComponent('Hola ' + responsable + ', te contacto por la guardia de ' + servicio + ' en el Hospital Italiano.');
+    var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var urlWsp = esMovil 
+      ? 'https://wa.me/' + wspNum + '?text=' + msg 
+      : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
+
+    html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
+              '<i class="bi bi-whatsapp"></i> WSP' +
+            '</a>';
+  }
+
+  // Interno Hospitalario
+  if (interno && String(interno).trim() !== '') {
+    html += '<span class="badge-interno" title="Interno hospitalario">' +
+              '<i class="bi bi-telephone-inbound"></i> Int. ' + String(interno).trim() +
+            '</span>';
+  }
+
+  // Botón Reportar
+  html += '<button type="button" class="btn-action-report" onclick="abrirModalReporte(\'' + servicio.replace(/'/g, "\\'") + '\')" title="Reportar guardia / Contactar referente">' +
+            '<i class="bi bi-flag-fill"></i> Reportar' +
+          '</button>';
+
+  html += '</div>';
+  return html;
+}
+
+function abrirModalReporte(servicio) {
+  var mapa = (typeof REFERENTES_SERVICIOS !== 'undefined') ? REFERENTES_SERVICIOS : {};
+  var referente = mapa[servicio] || { nombre: 'Dirección Médica / Guardia Central', contacto: '2914000000' };
+
+  document.getElementById('repServicio').innerText = servicio;
+  document.getElementById('repNombre').innerText = referente.nombre;
+
+  var cont = document.getElementById('repAccionesContacto');
+  cont.innerHTML = '';
+
+  var limpio = String(referente.contacto || '').trim();
+  var wsp = normalizarWhatsApp(limpio);
+
+  if (limpio) {
+    cont.innerHTML += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel fs-6 py-1 px-3">' +
+                        '<i class="bi bi-telephone-fill me-1"></i> Llamar: ' + limpio +
+                      '</a>';
+  }
+
+  if (wsp) {
+    var msg = encodeURIComponent('Hola ' + referente.nombre + ', me comunico para reportar una novedad sobre la guardia de ' + servicio + ' en el Hospital Italiano.');
+    var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var urlWsp = esMovil ? 'https://wa.me/' + wsp + '?text=' + msg : 'https://web.whatsapp.com/send?phone=' + wsp + '&text=' + msg;
+
+    cont.innerHTML += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp fs-6 py-1 px-3">' +
+                        '<i class="bi bi-whatsapp me-1"></i> WhatsApp' +
+                      '</a>';
+  }
+
+  if (!modalReporteInstance) {
+    modalReporteInstance = new bootstrap.Modal(document.getElementById('modalReporte'));
+  }
+  modalReporteInstance.show();
+}
+
+function renderizarTablasEnVivo(guardias) {
+  var tAct = document.getElementById('tablaActivas');
+  var tPas = document.getElementById('tablaPasivas');
+  tAct.innerHTML = '';
+  tPas.innerHTML = '';
+
+  var activasCount = 0;
+  var pasivasCount = 0;
+  var listaOperativos = (typeof SERVICIOS_OPERATIVOS !== 'undefined') ? SERVICIOS_OPERATIVOS : [];
+
+  guardias.forEach(function(g) {
+    var esOperativo = listaOperativos.includes(g.servicio);
+    
+    if (filtroCategoriaActual === 'profesional' && esOperativo) return;
+    if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
+
+    var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno);
+    var row = '<tr>' +
+      '<td class="fw-bold text-white">' + g.servicio + '</td>' +
+      '<td>' + g.responsable + '</td>' +
+      '<td>' + btns + '</td>' +
+    '</tr>';
+
+    if (g.tipo === 'Activa') {
+      tAct.innerHTML += row;
+      activasCount++;
+    } else {
+      tPas.innerHTML += row;
+      pasivasCount++;
+    }
+  });
+
+  if (activasCount === 0) {
+    tAct.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias activas para la vista seleccionada.</td></tr>';
+  }
+  if (pasivasCount === 0) {
+    tPas.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias pasivas a demanda para la vista seleccionada.</td></tr>';
+  }
+}
+
+function abrirModalLogin() {
+  if (tokenAdmin) {
+    document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  document.getElementById('adminPin').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  modalInstance = new bootstrap.Modal(document.getElementById('modalLogin'));
+  modalInstance.show();
+}
+
+function validarPin() {
+  var pin = document.getElementById('adminPin').value;
+  var pinCorrecto = (typeof ADMIN_PIN !== 'undefined') ? ADMIN_PIN : "SistemasHirs$$675";
+  if (pin === pinCorrecto) {
+    tokenAdmin = pin;
+    sessionStorage.setItem("admin_pin", pin);
+    modalInstance.hide();
+    activarModoAdmin();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+function activarModoAdmin() {
+  document.getElementById('seccionAdmin').style.display = 'block';
+  document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-check text-success"></i> Admin Activo';
+  cargarHistorial();
+  cargarAlertas();
+  document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cerrarSesionAdmin() {
+  sessionStorage.removeItem("admin_pin");
+  tokenAdmin = null;
+  document.getElementById('seccionAdmin').style.display = 'none';
+  document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-lock"></i> Administrador';
+}
+
+async function cargarAlertas() {
+  if (!tokenAdmin || !db) return;
+  try {
+    var hoy = new Date();
+    var manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+
+    var hoyStr = formatearFechaLocalISO(hoy);
+    var mananaStr = formatearFechaLocalISO(manana);
+
+    var { data, error } = await db
+      .from('guardias')
+      .select('servicio, fecha_inicio, fecha_fin')
+      .gte('fecha_fin', hoyStr);
+
+    if (error) throw error;
+
+    var listaCriticos = (typeof SERVICIOS_CRITICOS !== 'undefined') ? SERVICIOS_CRITICOS : [];
+    var huecos = [];
+    var filas = data || [];
+
+    [hoyStr, mananaStr].forEach(function(fechaEval) {
+      listaCriticos.forEach(function(srv) {
+        var cubierto = filas.some(function(r) {
+          var fIni = String(r.fecha_inicio).slice(0, 10);
+          var fFin = String(r.fecha_fin || r.fecha_inicio).slice(0, 10);
+          return r.servicio === srv && fechaEval >= fIni && fechaEval <= fFin;
+        });
+
+        if (!cubierto) {
+          huecos.push({ servicio: srv, fecha: fechaEval });
+        }
+      });
+    });
+
+    var cont = document.getElementById('contenedorAlertas');
+    var lista = document.getElementById('listaHuecos');
+    if (huecos.length > 0) {
+      lista.innerHTML = huecos.map(function(h) {
+        return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
+      }).join('<br>');
+      cont.style.display = 'block';
+    } else {
+      cont.style.display = 'none';
+    }
+  } catch(e) {
+    console.error("Error al cargar alertas:", e);
+  }
+}
+
+async function cargarHistorial() {
+  if (!tokenAdmin || !db) return;
+  try {
+    var { data, error } = await db
+      .from('guardias')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    historialCompleto = (data || []).map(function(d) {
+      return {
+        id: d.id,
+        timestamp: d.created_at ? new Date(d.created_at).toLocaleString() : '',
+        servicio: d.servicio,
+        tipo: d.tipo,
+        modalidad: d.modalidad || 'Semanal/Bloque',
+        fechaInicio: d.fecha_inicio,
+        fechaFin: d.fecha_fin,
+        responsable: d.responsable,
+        contacto: d.contacto,
+        interno: d.interno || ''
+      };
+    });
+
+    llenarComboServicios(historialCompleto);
+    filtrarHistorial();
+  } catch(e) {
+    console.error("Error historial:", e);
+  }
+}
+
+function llenarComboServicios(data) {
+  var combo = document.getElementById('filtroServicio');
+  var previo = combo.value;
+  var servicios = [...new Set(data.map(function(d) { return d.servicio; }))].sort();
+  combo.innerHTML = '<option value="">Todos los servicios</option>';
+  servicios.forEach(function(s) { combo.innerHTML += '<option value="' + s + '">' + s + '</option>'; });
+  if (previo) combo.value = previo;
+}
+
+function filtrarHistorial() {
+  var txt = document.getElementById('filtroNombre').value.toLowerCase();
+  var serv = document.getElementById('filtroServicio').value;
+  var dDesde = document.getElementById('filtroDesde').value;
+  var dHasta = document.getElementById('filtroHasta').value;
+
+  var filtrados = historialCompleto.filter(function(item) {
+    var coincideTxt = !txt || 
+      item.responsable.toLowerCase().includes(txt) || 
+      item.contacto.toLowerCase().includes(txt) ||
+      item.interno.toLowerCase().includes(txt);
+
+    var coincideServ = !serv || item.servicio === serv;
+    var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
+    var coincideHasta = !dHasta || item.fechaFin <= dHasta;
+    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+  });
+
+  renderizarTablaHistorial(filtrados);
+}
+
+function renderizarTablaHistorial(datos) {
+  var tbody = document.getElementById('tablaHistorial');
+  tbody.innerHTML = '';
+  if (datos.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> No se encontraron guardias con esos filtros.</td></tr>';
+    return;
+  }
+  datos.forEach(function(d) {
+    tbody.innerHTML += '<tr>' +
+      '<td class="text-secondary small">' + d.timestamp + '</td>' +
+      '<td class="fw-bold">' + d.servicio + '</td>' +
+      '<td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td>' +
+      '<td><small>' + d.modalidad + '</small></td>' +
+      '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
+      '<td>' + d.responsable + '</td>' +
+      '<td class="text-warning">' + d.contacto + '</td>' +
+      '<td>' + (d.interno ? '<span class="badge bg-secondary">Int. ' + d.interno + '</span>' : '-') + '</td>' +
+      '<td>' +
+        '<button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarFila(' + d.id + ')">' +
+          '<i class="bi bi-trash"></i>' +
+        '</button>' +
+      '</td>' +
+    '</tr>';
+  });
+}
+
+async function eliminarFila(id) {
+  if (!confirm('¿Seguro que deseas eliminar este registro de guardia?')) return;
+  try {
+    var { error } = await db.from('guardias').delete().eq('id', id);
+    if (error) throw error;
+    cargarHistorial();
+    cargarAlertas();
+    cargarDatos();
+  } catch(e) {
+    alert("Error al eliminar: " + e.message);
+  }
+}
+
+function exportarExcelFiltrado() {
+  var txt = document.getElementById('filtroNombre').value.toLowerCase();
+  var serv = document.getElementById('filtroServicio').value;
+  var dDesde = document.getElementById('filtroDesde').value;
+  var dHasta = document.getElementById('filtroHasta').value;
+
+  var filtrados = historialCompleto.filter(function(item) {
+    var coincideTxt = !txt || 
+      item.responsable.toLowerCase().includes(txt) || 
+      item.contacto.toLowerCase().includes(txt) ||
+      item.interno.toLowerCase().includes(txt);
+
+    var coincideServ = !serv || item.servicio === serv;
+    var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
+    var coincideHasta = !dHasta || item.fechaFin <= dHasta;
+    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+  });
+
+  if (filtrados.length === 0) {
+    alert('No hay datos visibles con los filtros actuales para exportar.');
+    return;
+  }
+
+  var filasExcel = filtrados.map(function(d) {
+    return {
+      "Fecha Carga": d.timestamp || '',
+      "Servicio": d.servicio || '',
+      "Tipo": d.tipo || '',
+      "Modalidad": d.modalidad || '',
+      "Desde": d.fechaInicio || '',
+      "Hasta": d.fechaFin || '',
+      "Responsable": d.responsable || '',
+      "WhatsApp / Móvil": d.contacto || '',
+      "Interno": d.interno || ''
+    };
+  });
+
+  var ws = XLSX.utils.json_to_sheet(filasExcel);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Guardias");
+
+  ws['!cols'] = [
+    { wch: 18 },
+    { wch: 26 },
+    { wch: 10 },
+    { wch: 22 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 12 }
+  ];
+
+  var fechaHoy = new Date().toISOString().slice(0, 10);
+  var nombreArchivo = "Reporte_Guardias_HIRS_" + fechaHoy + ".xlsx";
+
+  XLSX.writeFile(wb, nombreArchivo);
+}
+
+if (tokenAdmin) activarModoAdmin();
+cargarDatos();
