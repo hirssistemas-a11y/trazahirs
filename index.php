@@ -1,7 +1,3 @@
-<?php
-require '../defs/auth.php';
-?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -260,7 +256,7 @@ require '../defs/auth.php';
       <h5 class="text-white mb-0 fs-6"><i class="bi bi-clock-history me-1"></i> Historial y Auditoria de Guardias</h5>
       <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-outline-warning btn-sm fw-bold" onclick="abrirModalIncumplidas()">
-          <i class="bi bi-exclamation-octagon-fill"></i> Guardias Incumplidas
+          <i class="bi bi-exclamation-octagon-fill"></i> Incidentes de Guardia
         </button>
         <button class="btn btn-outline-info btn-sm fw-bold" onclick="abrirModalJefes()">
           <i class="bi bi-person-lines-fill"></i> Administrar Jefes de Servicio
@@ -320,7 +316,7 @@ require '../defs/auth.php';
   </div>
 
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
-    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.2.0</strong></span>
+    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.3.0</strong></span>
     <span class="mx-2">•</span>
     <span>Última versión: <strong id="lblFechaUpdate">08/09/2026</strong></span>
   </footer>
@@ -344,21 +340,30 @@ require '../defs/auth.php';
     </div>
   </div>
 
-  <!-- Modal 1: Confirmación de Incumplimiento -->
+  <!-- Modal 1: Reportar Incidente de Guardia -->
   <div class="modal fade" id="modalConfirmarReporte" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-dark border-danger text-white">
         <div class="modal-header border-secondary">
           <h5 class="modal-title fs-6 text-danger">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> Reportar Incumplimiento de Guardia
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> Reportar Incidente de Guardia
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p class="mb-2 fs-6">¿Está seguro que quiere reportar esta guardia como incumplida?</p>
-          <div class="p-2 rounded bg-black bg-opacity-50 border border-secondary small text-secondary">
+          <p class="mb-2 fs-6">¿Está seguro que desea reportar un incidente sobre esta guardia?</p>
+          <div class="p-2 rounded bg-black bg-opacity-50 border border-secondary small text-secondary mb-3">
             <div>Servicio: <strong id="confRepServicio" class="text-white"></strong></div>
             <div>Responsable: <strong id="confRepResponsable" class="text-white"></strong></div>
+          </div>
+
+          <!-- Campo de motivo con límite de 120 caracteres -->
+          <div class="mb-1">
+            <label class="form-label small text-secondary d-flex justify-content-between">
+              <span>Detalle del incidente (Opcional):</span>
+              <span id="charCount" class="text-info">0/120</span>
+            </label>
+            <textarea id="motivoIncidente" class="form-control filtro-input" rows="3" maxlength="120" placeholder="Escriba brevemente el inconveniente o novedad..." oninput="actualizarContadorChar(this)"></textarea>
           </div>
         </div>
         <div class="modal-footer border-secondary d-flex justify-content-end gap-2">
@@ -451,17 +456,17 @@ require '../defs/auth.php';
     </div>
   </div>
 
-  <!-- Modal 4: Auditoría de Guardias Incumplidas -->
+  <!-- Modal 4: Auditoría de Incidentes de Guardia -->
   <div class="modal fade" id="modalIncumplidas" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
       <div class="modal-content bg-dark border-danger text-white">
         <div class="modal-header border-secondary">
           <div class="d-flex align-items-center justify-content-between w-100 pe-3 flex-wrap gap-2">
             <h5 class="modal-title fs-6 text-warning">
-              <i class="bi bi-exclamation-octagon-fill me-2"></i> Auditoría de Guardias Incumplidas
+              <i class="bi bi-exclamation-octagon-fill me-2"></i> Auditoría de Incidentes de Guardia
             </h5>
             <button class="btn btn-success btn-sm fw-bold" onclick="exportarExcelIncumplidas()">
-              <i class="bi bi-file-earmark-excel"></i> Exportar Incumplidas (.xlsx)
+              <i class="bi bi-file-earmark-excel"></i> Exportar Incidentes (.xlsx)
             </button>
           </div>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -473,15 +478,15 @@ require '../defs/auth.php';
                 <tr>
                   <th>Fecha de Reporte</th>
                   <th>Servicio</th>
-                  <th>Responsable Incumplidor</th>
+                  <th>Responsable</th>
                   <th>Tipo</th>
                   <th>Modalidad</th>
-                  <th>Motivo</th>
+                  <th>Detalle / Incidente</th>
                   <th>Acción</th>
                 </tr>
               </thead>
               <tbody id="tablaIncumplidasBody">
-                <tr><td colspan="7" class="text-center tabla-vacia">Cargando auditoría...</td></tr>
+                <tr><td colspan="7" class="text-center tabla-vacia">Cargando incidentes...</td></tr>
               </tbody>
             </table>
           </div>
@@ -493,6 +498,6 @@ require '../defs/auth.php';
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/dashboard.js?v=4"></script>
+  <script src="js/dashboard.js?v=5"></script>
 </body>
 </html>
