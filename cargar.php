@@ -54,7 +54,7 @@
           <small class="text-secondary">Hospital Italiano Regional del Sur</small>
         </div>
       </div>
-      <a href="index.html" class="btn btn-outline-secondary btn-sm">
+      <a href="index.php" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left"></i> Volver al Monitor
       </a>
     </div>
@@ -176,6 +176,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=4"></script>
+  <script src="js/formulario.js?v=5"></script>
 </body>
 </html>
