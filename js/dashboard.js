@@ -65,7 +65,6 @@ function filtrarCategoria(cat) {
   renderizarTablasEnVivo(guardiasEnVivo);
 }
 
-// Carga de guardias vigentes y jefaturas dinámicas
 async function cargarDatos() {
   if (cargandoDatos) return;
   cargandoDatos = true;
@@ -75,7 +74,6 @@ async function cargarDatos() {
   try {
     if (!db) throw new Error("Base de datos no configurada en js/config.js");
 
-    // Sincronizar jefaturas desde Supabase en background
     await cargarReferentesDesdeBD();
 
     var ahora = new Date();
@@ -127,7 +125,6 @@ async function cargarDatos() {
   }
 }
 
-// Obtener jefaturas de la base de datos
 async function cargarReferentesDesdeBD() {
   try {
     const { data, error } = await db.from('referentes_servicios').select('*');
@@ -160,14 +157,12 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   var wspNum = normalizarWhatsApp(limpio);
   var html = '<div class="d-flex align-items-center gap-1 flex-wrap">';
 
-  // Llamar
   if (limpio) {
     html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar">' +
               '<i class="bi bi-telephone-fill"></i> ' + limpio +
             '</a>';
   }
 
-  // WhatsApp
   if (wspNum) {
     var msg = encodeURIComponent('Hola ' + responsable + ', te contacto por la guardia de ' + servicio + ' en el Hospital Italiano.');
     var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -180,14 +175,12 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
             '</a>';
   }
 
-  // Interno Hospitalario
   if (interno && String(interno).trim() !== '') {
     html += '<span class="badge-interno" title="Interno hospitalario">' +
               '<i class="bi bi-telephone-inbound"></i> Int. ' + String(interno).trim() +
             '</span>';
   }
 
-  // Botón Reportar Guardia (Abre modal de confirmación)
   var guardiaObjJson = JSON.stringify({
     id: idGuardia,
     servicio: servicio,
@@ -196,7 +189,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
     modalidad: modalidad
   }).replace(/"/g, '&quot;');
 
-  html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar guardia incumplida">' +
+  html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
             '<i class="bi bi-flag-fill"></i> Reportar' +
           '</button>';
 
@@ -205,13 +198,22 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
 }
 
 // -------------------------------------------------------------
-// FLUJO: REPORTAR GUARDIA INCUMPLIDA
+// FLUJO: REPORTAR INCIDENTE DE GUARDIA
 // -------------------------------------------------------------
+
+function actualizarContadorChar(textarea) {
+  var len = textarea.value.length;
+  document.getElementById('charCount').innerText = len + '/120';
+}
 
 function solicitarConfirmacionReporte(guardia) {
   guardiaPendienteReporte = guardia;
   document.getElementById('confRepServicio').innerText = guardia.servicio;
   document.getElementById('confRepResponsable').innerText = guardia.responsable;
+
+  var txtArea = document.getElementById('motivoIncidente');
+  txtArea.value = '';
+  actualizarContadorChar(txtArea);
 
   if (!modalConfirmarInstance) {
     modalConfirmarInstance = new bootstrap.Modal(document.getElementById('modalConfirmarReporte'));
@@ -222,9 +224,10 @@ function solicitarConfirmacionReporte(guardia) {
 async function confirmarReporteIncumplimiento() {
   if (!guardiaPendienteReporte) return;
   var g = guardiaPendienteReporte;
+  var motivoTexto = document.getElementById('motivoIncidente').value.trim();
+  var motivoFinal = motivoTexto !== '' ? motivoTexto.slice(0, 120) : 'Incidente reportado desde el monitor público';
 
   try {
-    // 1. Registrar en la tabla guardias_incumplidas
     if (db) {
       await db.from('guardias_incumplidas').insert([{
         guardia_id: g.id || null,
@@ -232,18 +235,15 @@ async function confirmarReporteIncumplimiento() {
         responsable: g.responsable,
         tipo: g.tipo,
         modalidad: g.modalidad,
-        motivo: 'Incumplimiento reportado desde el monitor público'
+        motivo: motivoFinal
       }]);
     }
 
-    // 2. Cerrar modal de confirmación
     if (modalConfirmarInstance) modalConfirmarInstance.hide();
-
-    // 3. Abrir el modal con los datos del Jefe de Servicio
     mostrarContactoReferente(g.servicio);
 
   } catch (err) {
-    console.error("Error al registrar incumplimiento:", err);
+    console.error("Error al registrar incidente:", err);
     if (modalConfirmarInstance) modalConfirmarInstance.hide();
     mostrarContactoReferente(g.servicio);
   }
@@ -252,7 +252,6 @@ async function confirmarReporteIncumplimiento() {
 function mostrarContactoReferente(servicio) {
   var ref = referentesCache[servicio];
 
-  // Si no está en BD, buscar en el config estático o valor por defecto
   if (!ref && typeof REFERENTES_SERVICIOS !== 'undefined') {
     ref = REFERENTES_SERVICIOS[servicio];
   }
@@ -600,7 +599,6 @@ async function cargarTablaJefes() {
     var lista = data || [];
     tbody.innerHTML = '';
 
-    // Poblar desplegable de servicios en el modal de jefes
     var listaServiciosMaestra = (typeof SERVICIOS_CRITICOS !== 'undefined' && typeof SERVICIOS_OPERATIVOS !== 'undefined')
       ? [...new Set([...SERVICIOS_CRITICOS, ...SERVICIOS_OPERATIVOS])].sort()
       : [];
@@ -669,7 +667,7 @@ async function eliminarJefe(id) {
 }
 
 // -------------------------------------------------------------
-// AUDITORÍA: GUARDIAS INCUMPLIDAS
+// AUDITORÍA: INCIDENTES DE GUARDIA
 // -------------------------------------------------------------
 
 async function abrirModalIncumplidas() {
@@ -683,7 +681,7 @@ async function abrirModalIncumplidas() {
 
 async function cargarTablaIncumplidas() {
   var tbody = document.getElementById('tablaIncumplidasBody');
-  tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia">Cargando incumplimientos...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia">Cargando incidentes...</td></tr>';
 
   try {
     const { data, error } = await db
@@ -697,7 +695,7 @@ async function cargarTablaIncumplidas() {
     tbody.innerHTML = '';
 
     if (guardiasIncumplidasLista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia text-success"><i class="bi bi-check-circle me-1"></i> No se han registrado guardias incumplidas.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia text-success"><i class="bi bi-check-circle me-1"></i> No se han registrado incidentes de guardia.</td></tr>';
       return;
     }
 
@@ -719,13 +717,13 @@ async function cargarTablaIncumplidas() {
     });
 
   } catch(e) {
-    console.error("Error al cargar incumplidas:", e);
+    console.error("Error al cargar incidentes:", e);
     tbody.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Error al conectar con la base de datos.</td></tr>';
   }
 }
 
 async function eliminarReporteIncumplido(id) {
-  if (!confirm("¿Desea quitar este registro de guardia incumplida?")) return;
+  if (!confirm("¿Desea quitar este registro de incidente de guardia?")) return;
   try {
     const { error } = await db.from('guardias_incumplidas').delete().eq('id', id);
     if (error) throw error;
@@ -737,7 +735,7 @@ async function eliminarReporteIncumplido(id) {
 
 function exportarExcelIncumplidas() {
   if (!guardiasIncumplidasLista || guardiasIncumplidasLista.length === 0) {
-    alert('No hay registros de guardias incumplidas para exportar.');
+    alert('No hay registros de incidentes de guardia para exportar.');
     return;
   }
 
@@ -748,20 +746,20 @@ function exportarExcelIncumplidas() {
       "Responsable Reportado": d.responsable || '',
       "Tipo de Guardia": d.tipo || '',
       "Modalidad": d.modalidad || '',
-      "Motivo": d.motivo || 'Incumplimiento reportado'
+      "Detalle / Incidente": d.motivo || 'Incidente reportado'
     };
   });
 
   var ws = XLSX.utils.json_to_sheet(filas);
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Incumplidas");
+  XLSX.utils.book_append_sheet(wb, ws, "Incidentes");
 
   ws['!cols'] = [
-    { wch: 22 }, { wch: 26 }, { wch: 24 }, { wch: 14 }, { wch: 22 }, { wch: 35 }
+    { wch: 22 }, { wch: 26 }, { wch: 24 }, { wch: 14 }, { wch: 22 }, { wch: 40 }
   ];
 
   var fechaHoy = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, "Reporte_Guardias_Incumplidas_HIRS_" + fechaHoy + ".xlsx");
+  XLSX.writeFile(wb, "Reporte_Incidentes_Guardias_HIRS_" + fechaHoy + ".xlsx");
 }
 
 if (tokenAdmin) activarModoAdmin();
