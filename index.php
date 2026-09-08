@@ -1,3 +1,7 @@
+<?php
+require '../defs/auth.php';
+?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
