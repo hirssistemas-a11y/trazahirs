@@ -14,7 +14,6 @@ const colTipo = document.getElementById('colTipo');
 const selModalidad = document.getElementById('modalidad');
 const formGuardia = document.getElementById('formGuardia');
 
-// Inicialización de Flatpickr
 function initFlatpickr(mode) {
   if (fpInstance) fpInstance.destroy();
   modoActual = mode;
@@ -48,15 +47,13 @@ function cambiarModoCalendario(mode) {
   }
 }
 
-// Generación de bloques de 6, 12 y 24 hs arrancando a las 08:00 AM (Exclusivo Guardia Externa)
+// Opciones horarias exclusivas para Guardia Externa
 function actualizarFranjasHorarias() {
   const dur = selDuracion.value;
   selModalidad.innerHTML = '';
 
   if (dur === '24') {
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-    `;
+    selModalidad.innerHTML = '<option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>';
   } else if (dur === '12') {
     selModalidad.innerHTML = `
       <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
@@ -72,7 +69,7 @@ function actualizarFranjasHorarias() {
   }
 }
 
-// Parametrización dinámica: Solo Guardia Externa tiene variantes; el resto queda fijado en 24 hs
+// Adaptación de los selectores según el servicio seleccionado
 function actualizarHorariosSegunServicio() {
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
@@ -81,11 +78,11 @@ function actualizarHorariosSegunServicio() {
     colDuracion.style.display = 'none';
     colTipo.className = 'col-md-6';
     colModalidad.className = 'col-md-6';
-    selModalidad.innerHTML = '<option value="">-- Seleccione un servicio primero --</option>';
+    selModalidad.innerHTML = '<option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>';
     return;
   }
 
-  // 1. Guardia Externa (Adultos y Pediátrica): habilita 6, 12 y 24 hs
+  // CASO 1: Guardia Externa (Adultos y Pediátrica) -> Habilita 6, 12 y 24 hs
   if (srv.includes('Guardia externa')) {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
@@ -96,12 +93,11 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 2. Todos los demás servicios: Ocultar selector intermedio y fijar solo en 24 hs
+  // CASO 2: TODOS los demás servicios -> 24 hs fija (una sola opción)
   colDuracion.style.display = 'none';
   colTipo.className = 'col-md-4';
   colModalidad.className = 'col-md-8';
 
-  // Clasificación de Tipo (Activa vs Pasiva)
   const serviciosActivos = [
     'Neonatologia', 'Cirugia General', 'Traumatologia', 
     'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 
@@ -115,13 +111,12 @@ function actualizarHorariosSegunServicio() {
   }
   selTipo.disabled = true;
 
-  // Modalidad fijada exclusivamente en 24 hs para todos los servicios fuera de Guardia Externa
-  selModalidad.innerHTML = `
-    <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-  `;
+  // Solo 24 horas para cualquier otro servicio
+  selModalidad.innerHTML = '<option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>';
 }
 
 selServicio.addEventListener('change', actualizarHorariosSegunServicio);
+selDuracion.addEventListener('change', actualizarFranjasHorarias);
 
 // Envío a Supabase
 formGuardia.addEventListener('submit', async function(e) {
@@ -211,5 +206,6 @@ formGuardia.addEventListener('submit', async function(e) {
   }
 });
 
+// Inicialización
 initFlatpickr('range');
 actualizarHorariosSegunServicio();
