@@ -110,28 +110,36 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var srv = guardia.servicio || '';
 
-  // Servicios Operativos con horarios institucionales de salida
+  // REGLA ECOGRAFÍA: Días de semana de 12:00 a 20:00 hs; Fines de semana las 24 hs
+  if (srv === 'Ecografia') {
+    if (esFinde) return true;
+    return horaAhora >= 12 && horaAhora < 20;
+  }
+
+  // Sistemas: Lunes a Viernes pasiva desde las 15:00 hs; Fines de semana las 24 hs
   if (srv === 'Sistemas') {
     if (esFinde) return true;
     return horaAhora >= 15;
   }
 
+  // Electromedicina: Lunes a Viernes pasiva desde las 13:00 hs; Fines de semana las 24 hs
   if (srv === 'Electromedicina') {
     if (esFinde) return true;
     return horaAhora >= 13;
   }
 
+  // Farmacia: Lunes a Viernes pasiva desde las 16:00 hs; Fines de semana las 24 hs
   if (srv === 'Farmacia') {
     if (esFinde) return true;
     return horaAhora >= 16;
   }
 
+  // RX Quirófano: Lunes a Viernes pasiva nocturna (20:00 a 08:00); Fines de semana las 24 hs
   if (srv === 'RX Quirofano') {
     if (esFinde) return true;
     return horaAhora >= 20 || horaAhora < 8;
   }
 
-  // Resto de servicios pasivos (Ecografía, IGEA, Técnico de Imágenes, Mantenimiento, etc.):
-  // Cubren a demanda las 24 hs durante el rango de fechas asignado
+  // Resto de servicios pasivos a demanda (IGEA, Técnico de Imágenes, Mantenimiento, etc.):
   return true;
 }
