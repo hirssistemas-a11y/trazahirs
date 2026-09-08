@@ -1,245 +1,137 @@
 // ==========================================
-// CONTROLADOR DEL FORMULARIO DE CARGA (HIRS)
+// LÓGICA HORARIA Y VALIDACIÓN DE GUARDIAS HIRS
 // ==========================================
 
-var fpInstance = null;
-var modoActual = 'range';
-
-const selServicio = document.getElementById('servicio');
-const selTipo = document.getElementById('tipo');
-const selDuracion = document.getElementById('duracionTurno');
-const colDuracion = document.getElementById('colDuracion');
-const colModalidad = document.getElementById('colModalidad');
-const colTipo = document.getElementById('colTipo');
-const selModalidad = document.getElementById('modalidad');
-const formGuardia = document.getElementById('formGuardia');
-
-// Inicialización de Flatpickr
-function initFlatpickr(mode) {
-  if (fpInstance) fpInstance.destroy();
-  modoActual = mode;
-  fpInstance = flatpickr("#selectorFechas", {
-    mode: mode,
-    locale: "es",
-    dateFormat: "Y-m-d",
-    altInput: true,
-    altFormat: "d/m/Y",
-    conjunction: " | ",
-    minDate: "today"
-  });
+function formatearFechaLocalISO(d) {
+  var anio = d.getFullYear();
+  var mes = String(d.getMonth() + 1).padStart(2, '0');
+  var dia = String(d.getDate()).padStart(2, '0');
+  return anio + '-' + mes + '-' + dia;
 }
 
-function cambiarModoCalendario(mode) {
-  document.getElementById('selectorFechas').value = '';
-  initFlatpickr(mode);
-  
-  const bRango = document.getElementById('btnModoRango');
-  const bDias = document.getElementById('btnModoDias');
-  const ayuda = document.getElementById('ayudaFechas');
+function esGuardiaVigente(guardia, fechaReferencia) {
+  var ahora = fechaReferencia || new Date();
+  var ahoraTimestamp = ahora.getTime();
 
-  if (mode === 'range') {
-    bRango.className = 'btn btn-outline-info btn-sm';
-    bDias.className = 'btn btn-outline-secondary btn-sm';
-    ayuda.innerText = 'Seleccione una fecha de inicio y una de fin para cubrir todo el bloque continuo.';
-  } else {
-    bRango.className = 'btn btn-outline-secondary btn-sm';
-    bDias.className = 'btn btn-outline-info btn-sm';
-    ayuda.innerText = 'Haga clic en cada uno de los días específicos en los que cubrirá guardia.';
-  }
-}
+  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
+  var fFinStr = String(guardia.fechaFin || guardia.fechaInicio || '').slice(0, 10);
 
-// Generación de bloques de 6, 12 y 24 hs arrancando a las 08:00 AM
-function actualizarFranjasHorarias() {
-  const dur = selDuracion.value;
-  selModalidad.innerHTML = '';
+  if (!fIniStr) return false;
 
-  if (dur === '24') {
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-    `;
-  } else if (dur === '12') {
-    selModalidad.innerHTML = `
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-    `;
-  } else if (dur === '6') {
-    selModalidad.innerHTML = `
-      <option value="6 hs Mañana (08:00-14:00)">6 hs Mañana (08:00 a 14:00)</option>
-      <option value="6 hs Tarde (14:00-20:00)">6 hs Tarde (14:00 a 20:00)</option>
-      <option value="6 hs Noche (20:00-02:00)">6 hs Noche (20:00 a 02:00)</option>
-      <option value="6 hs Trasnoche (02:00-08:00)">6 hs Trasnoche (02:00 a 08:00)</option>
-    `;
-  }
-}
+  var partesIni = fIniStr.split('-');
+  var partesFin = fFinStr.split('-');
 
-// Parametrización dinámica según el servicio
-function actualizarHorariosSegunServicio() {
-  const srv = selServicio.value;
-  selModalidad.innerHTML = '';
+  var yIni = parseInt(partesIni[0], 10);
+  var mIni = parseInt(partesIni[1], 10) - 1;
+  var dIni = parseInt(partesIni[2], 10);
 
-  if (!srv) {
-    colDuracion.style.display = 'none';
-    colTipo.className = 'col-md-6';
-    colModalidad.className = 'col-md-6';
-    selModalidad.innerHTML = '<option value="">-- Seleccione un servicio primero --</option>';
-    return;
-  }
+  var yFin = parseInt(partesFin[0], 10);
+  var mFin = parseInt(partesFin[1], 10) - 1;
+  var dFin = parseInt(partesFin[2], 10);
 
-  // 1. Guardias Externas (Adultos y Pediátrica): habilita 6, 12 y 24 hs iniciando a las 08:00 AM
-  if (srv.includes('Guardia externa')) {
-    selTipo.value = 'Activa';
-    selTipo.disabled = true;
-    colTipo.className = 'col-md-4';
-    colDuracion.style.display = 'block';
-    colModalidad.className = 'col-md-4';
-    actualizarFranjasHorarias();
-    return;
-  }
+  // -------------------------------------------------------------
+  // 1. GUARDIAS ACTIVAS (EN PLANTA)
+  // -------------------------------------------------------------
+  if (guardia.tipo === 'Activa') {
+    var mod = guardia.modalidad || '24 hs (08:00-08:00)';
 
-  // Si no es guardia externa, ocultamos la duración intermedia
-  colDuracion.style.display = 'none';
-  colTipo.className = 'col-md-4';
-  colModalidad.className = 'col-md-8';
-
-  // 2. Servicios Médicos de Planta Activa (24 hs o 12 hs Diurna/Nocturna)
-  const serviciosMedicosActivos = [
-    'Neonatologia', 'Cirugia General', 'Traumatologia', 
-    'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 
-    'Anestesia', 'Instrumentadoras'
-  ];
-
-  // 3. Servicios Médicos y Técnicos con Guardias Pasivas (A Demanda continua)
-  const serviciosMedicosPasivos = [
-    'Ecografia', 'IGEA', 'Tecnico de Imagenes'
-  ];
-
-  // 4. Servicios Operativos Mixtos (L-V tarde/noche y Fines de semana 24 hs)
-  const serviciosOperativosMixtos = [
-    'Sistemas', 'Electromedicina', 'Farmacia', 
-    'Esterilizacion', 'Hemoterapia', 'RX Quirofano'
-  ];
-
-  if (serviciosMedicosActivos.includes(srv)) {
-    selTipo.value = 'Activa';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-    `;
-  } else if (serviciosMedicosPasivos.includes(srv) || srv === 'Mantenimiento') {
-    selTipo.value = 'Pasiva';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Pasiva a Demanda (24 hs continua a llamado)</option>
-    `;
-  } else if (serviciosOperativosMixtos.includes(srv)) {
-    selTipo.value = 'Pasiva';
-    selTipo.disabled = true;
-    selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Pasiva Institucional (L-V tarde/noche - Sáb/Dom 24hs)</option>
-      <option value="24 hs (08:00-08:00)">24 hs (Refuerzo Fin de semana / Feriado)</option>
-    `;
-  } else {
-    selTipo.disabled = false;
-    selModalidad.innerHTML = `
-      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-      <option value="Turno Rotativo / Pasiva">Turno Continuo / Pasiva</option>
-    `;
-  }
-}
-
-selServicio.addEventListener('change', actualizarHorariosSegunServicio);
-
-// Envío a Supabase
-formGuardia.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const btn = document.getElementById('btnGuardar');
-  const feed = document.getElementById('alertaFeedback');
-  feed.style.display = 'none';
-
-  if (!fpInstance || fpInstance.selectedDates.length === 0) {
-    feed.className = 'alert alert-warning';
-    feed.innerText = 'Debe seleccionar al menos una fecha o rango.';
-    feed.style.display = 'block';
-    return;
-  }
-
-  if (!db) {
-    feed.className = 'alert alert-danger';
-    feed.innerText = 'Error: Base de datos Supabase no conectada. Verifique js/config.js.';
-    feed.style.display = 'block';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando registros...';
-
-  try {
-    const servicioValor = selServicio.value;
-    const tipoValor = selTipo.value;
-    const modalidadValor = selModalidad.value;
-    const respValor = document.getElementById('responsable').value.trim();
-    const contactoValor = document.getElementById('contacto').value.trim();
-    const internoValor = document.getElementById('interno').value.trim();
-
-    const fechasParaInsertar = [];
-
-    if (modoActual === 'range') {
-      const fIni = fpInstance.selectedDates[0];
-      const fFin = fpInstance.selectedDates[1] || fIni;
-      fechasParaInsertar.push({
-        inicio: formatearFechaLocalISO(fIni),
-        fin: formatearFechaLocalISO(fFin)
-      });
-    } else {
-      fpInstance.selectedDates.forEach(function(d) {
-        const str = formatearFechaLocalISO(d);
-        fechasParaInsertar.push({ inicio: str, fin: str });
-      });
+    // Caso A: 24 Horas (08:00 AM a 08:00 AM del día posterior a fechaFin)
+    if (mod.indexOf('24 hs') !== -1 || mod.indexOf('08:00-08:00') !== -1) {
+      var inicio = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
+      var fin = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      fin.setDate(fin.getDate() + 1);
+      return ahoraTimestamp >= inicio.getTime() && ahoraTimestamp < fin.getTime();
     }
 
-    const filas = fechasParaInsertar.map(function(item) {
-      return {
-        servicio: servicioValor,
-        tipo: tipoValor,
-        modalidad: modalidadValor,
-        fecha_inicio: item.inicio,
-        fecha_fin: item.fin,
-        responsable: respValor,
-        contacto: contactoValor,
-        interno: internoValor || null
-      };
-    });
+    // Caso B: 12 Horas Diurna (08:00 a 20:00 de cada día del rango)
+    if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
+      var hoyStr = formatearFechaLocalISO(ahora);
+      if (hoyStr < fIniStr || hoyStr > fFinStr) return false;
 
-    const { data, error } = await db
-      .from('guardias')
-      .insert(filas);
+      var hora = ahora.getHours();
+      return hora >= 8 && hora < 20;
+    }
 
-    if (error) throw error;
+    // Caso C: 12 Horas Nocturna (20:00 a 08:00 del día siguiente)
+    if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
+      var inicioNoc = new Date(yIni, mIni, dIni, 20, 0, 0, 0);
+      var finNoc = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      finNoc.setDate(finNoc.getDate() + 1);
+      
+      if (ahoraTimestamp < inicioNoc.getTime() || ahoraTimestamp >= finNoc.getTime()) {
+        return false;
+      }
+      var horaActual = ahora.getHours();
+      return horaActual >= 20 || horaActual < 8;
+    }
 
-    feed.className = 'alert alert-success';
-    feed.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Se registraron exitosamente ' + filas.length + ' guardia(s).';
-    feed.style.display = 'block';
+    // Caso D: Turnos Fraccionados de 6 Horas (base 08:00 AM)
+    if (mod.indexOf('6 hs') !== -1) {
+      var hoyStr6 = formatearFechaLocalISO(ahora);
+      if (hoyStr6 < fIniStr || hoyStr6 > fFinStr) return false;
 
-    document.getElementById('responsable').value = '';
-    document.getElementById('contacto').value = '';
-    document.getElementById('interno').value = '';
-    document.getElementById('selectorFechas').value = '';
-    initFlatpickr(modoActual);
+      var h = ahora.getHours();
 
-  } catch (err) {
-    console.error("Error al registrar:", err);
-    feed.className = 'alert alert-danger';
-    feed.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i> Error: ' + (err.message || 'No se pudo guardar');
-    feed.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Asignación de Guardia';
+      // 08:00 a 14:00
+      if (mod.indexOf('08:00-14:00') !== -1) {
+        return h >= 8 && h < 14;
+      }
+      // 14:00 a 20:00
+      if (mod.indexOf('14:00-20:00') !== -1) {
+        return h >= 14 && h < 20;
+      }
+      // 20:00 a 02:00 (Cruza medianoche)
+      if (mod.indexOf('20:00-02:00') !== -1) {
+        return h >= 20 || h < 2;
+      }
+      // 02:00 a 08:00
+      if (mod.indexOf('02:00-08:00') !== -1) {
+        return h >= 2 && h < 8;
+      }
+    }
+
+    // Fallback Activa por defecto
+    var iniDef = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
+    var finDef = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+    finDef.setDate(finDef.getDate() + 1);
+    return ahoraTimestamp >= iniDef.getTime() && ahoraTimestamp < finDef.getTime();
   }
-});
 
-initFlatpickr('range');
-actualizarHorariosSegunServicio();
+  // -------------------------------------------------------------
+  // 2. GUARDIAS PASIVAS (A DEMANDA)
+  // -------------------------------------------------------------
+  var hoyStrLocal = formatearFechaLocalISO(ahora);
+  if (hoyStrLocal < fIniStr || hoyStrLocal > fFinStr) {
+    return false;
+  }
+
+  var diaSemana = ahora.getDay(); // 0 = Domingo, 6 = Sábado
+  var horaAhora = ahora.getHours();
+  var esFinde = (diaSemana === 0 || diaSemana === 6);
+  var srv = guardia.servicio || '';
+
+  // Servicios Operativos con horarios institucionales de salida
+  if (srv === 'Sistemas') {
+    if (esFinde) return true;
+    return horaAhora >= 15;
+  }
+
+  if (srv === 'Electromedicina') {
+    if (esFinde) return true;
+    return horaAhora >= 13;
+  }
+
+  if (srv === 'Farmacia') {
+    if (esFinde) return true;
+    return horaAhora >= 16;
+  }
+
+  if (srv === 'RX Quirofano') {
+    if (esFinde) return true;
+    return horaAhora >= 20 || horaAhora < 8;
+  }
+
+  // Resto de servicios pasivos (Ecografía, IGEA, Técnico de Imágenes, Mantenimiento, etc.):
+  // Cubren a demanda las 24 hs durante el rango de fechas asignado
+  return true;
+}
