@@ -15,7 +15,8 @@ const SERVICIOS_CRITICOS = [
   'Parteras',
   'Laboratorio',
   'Cardiologia/Unidad Coronaria',
-  'Anestesia',
+  'Anestesista',
+  'Tecnico de Anestesia',
   'Ecografia',
   'Tecnico de Imagenes',
   'IGEA'
@@ -34,7 +35,7 @@ const SERVICIOS_OPERATIVOS = [
   'Tecnico de Imagenes'
 ];
 
-// Contactos de Referentes / Jefes de Servicio para "Reportar Guardia"
+// Contactos de Referentes / Jefes de Servicio para fallback si no están en Supabase
 const REFERENTES_SERVICIOS = {
   'Guardia externa Adultos': { nombre: 'Jefatura Guardia Adultos', contacto: '2914000001' },
   'Guardia externa Pediatrica': { nombre: 'Jefatura Pediatría', contacto: '2914000002' },
@@ -46,7 +47,8 @@ const REFERENTES_SERVICIOS = {
   'Parteras': { nombre: 'Coordinación Parteras', contacto: '2914000021' },
   'Laboratorio': { nombre: 'Jefatura Laboratorio', contacto: '2914000007' },
   'Cardiologia/Unidad Coronaria': { nombre: 'Jefatura Cardiología', contacto: '2914000008' },
-  'Anestesia': { nombre: 'Jefatura Anestesia', contacto: '2914000009' },
+  'Anestesista': { nombre: 'Jefatura Anestesiología', contacto: '2914000009' },
+  'Tecnico de Anestesia': { nombre: 'Coordinación Técnicos Anestesia', contacto: '2914000009' },
   'Ecografia': { nombre: 'Jefatura Ecografía', contacto: '2914000010' },
   'Tecnico de Imagenes': { nombre: 'Coordinación Imágenes', contacto: '2914000011' },
   'IGEA': { nombre: 'Referente IGEA', contacto: '2914000012' },
