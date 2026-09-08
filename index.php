@@ -14,8 +14,24 @@
     .clock-box { font-size: 1.2rem; font-weight: bold; color: #38bdf8; font-variant-numeric: tabular-nums; }
     .btn-admin { border-color: #334155; color: #94a3b8; font-size: 0.85rem; }
     .btn-admin:hover { background-color: #1e293b; color: #f8fafc; }
-    .filtro-input { background-color: #0f172a; border: 1px solid #334155; color: #fff; }
-    .filtro-input:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+
+    /* Contraste estricto para que las letras se lean claramente */
+    .form-control, .form-select, textarea, .filtro-input { 
+      background-color: #0f172a !important; 
+      border: 1px solid #334155 !important; 
+      color: #ffffff !important; 
+    }
+    .form-control::placeholder, textarea::placeholder { 
+      color: #94a3b8 !important; 
+      opacity: 1 !important; 
+    }
+    .form-control:focus, textarea:focus, .filtro-input:focus { 
+      background-color: #0f172a !important; 
+      color: #ffffff !important; 
+      border-color: #38bdf8 !important; 
+      box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.25) !important; 
+    }
+
     .sync-badge { font-size: 0.75rem; color: #94a3b8; }
     
     .logo-desktop { height: 60px; width: auto; object-fit: contain; }
@@ -316,7 +332,7 @@
   </div>
 
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
-    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.3.0</strong></span>
+    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.3.1</strong></span>
     <span class="mx-2">•</span>
     <span>Última versión: <strong id="lblFechaUpdate">08/09/2026</strong></span>
   </footer>
@@ -357,13 +373,13 @@
             <div>Responsable: <strong id="confRepResponsable" class="text-white"></strong></div>
           </div>
 
-          <!-- Campo de motivo con límite de 120 caracteres -->
+          <!-- Campo de motivo con contraste legible -->
           <div class="mb-1">
             <label class="form-label small text-secondary d-flex justify-content-between">
               <span>Detalle del incidente (Opcional):</span>
-              <span id="charCount" class="text-info">0/120</span>
+              <span id="charCount" class="text-info fw-bold">0/120</span>
             </label>
-            <textarea id="motivoIncidente" class="form-control filtro-input" rows="3" maxlength="120" placeholder="Escriba brevemente el inconveniente o novedad..." oninput="actualizarContadorChar(this)"></textarea>
+            <textarea id="motivoIncidente" class="form-control" rows="3" maxlength="120" placeholder="Escriba brevemente el inconveniente..." oninput="actualizarContadorChar(this)"></textarea>
           </div>
         </div>
         <div class="modal-footer border-secondary d-flex justify-content-end gap-2">
@@ -418,16 +434,16 @@
           <form id="formJefe" class="row g-2 mb-3 align-items-end p-2 border border-secondary rounded bg-black bg-opacity-25" onsubmit="guardarJefeServicio(event)">
             <div class="col-md-4">
               <label class="form-label small text-secondary">Servicio:</label>
-              <select id="jefeSelServicio" class="form-select form-select-sm filtro-input" required>
+              <select id="jefeSelServicio" class="form-select form-select-sm" required>
               </select>
             </div>
             <div class="col-md-4">
               <label class="form-label small text-secondary">Nombre Jefe / Referente:</label>
-              <input type="text" id="jefeNombre" class="form-control form-control-sm filtro-input" placeholder="Ej: Dr. Gómez Juan" required>
+              <input type="text" id="jefeNombre" class="form-control form-control-sm" placeholder="Ej: Dr. Gómez Juan" required>
             </div>
             <div class="col-md-3">
               <label class="form-label small text-secondary">Teléfono / WhatsApp:</label>
-              <input type="tel" id="jefeContacto" class="form-control form-control-sm filtro-input" placeholder="Ej: 2914123456" required>
+              <input type="tel" id="jefeContacto" class="form-control form-control-sm" placeholder="Ej: 2914123456" required>
             </div>
             <div class="col-md-1">
               <button type="submit" class="btn btn-success btn-sm w-100" title="Guardar cambios">
@@ -498,6 +514,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/dashboard.js?v=5"></script>
+  <script src="js/dashboard.js?v=6"></script>
 </body>
 </html>
