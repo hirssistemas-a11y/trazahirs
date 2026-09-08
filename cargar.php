@@ -62,7 +62,7 @@
     <div class="card card-form p-4">
       <form id="formGuardia" autocomplete="off" onsubmit="return false;">
 
-        <!-- Inputs señuelo ocultos para desactivar heurísticas de autocompletado de Chrome -->
+        <!-- Inputs señuelo ocultos anti-autocompletado -->
         <input type="text" style="display:none" aria-hidden="true">
         <input type="password" style="display:none" aria-hidden="true">
 
@@ -77,11 +77,13 @@
               <option value="Neonatologia">Neonatologia</option>
               <option value="Cirugia General">Cirugia General</option>
               <option value="Traumatologia">Traumatologia</option>
+              <option value="UTI">UTI</option>
+              <option value="Cardiologia/Unidad Coronaria">Cardiologia/Unidad Coronaria</option>
+              <option value="Hemodinamia">Hemodinamia</option>
               <option value="Ginecologia">Ginecologia</option>
               <option value="Obstetricia">Obstetricia</option>
               <option value="Parteras">Parteras</option>
               <option value="Laboratorio">Laboratorio</option>
-              <option value="Cardiologia/Unidad Coronaria">Cardiologia/Unidad Coronaria</option>
               <option value="Anestesista">Anestesista</option>
               <option value="Tecnico de Anestesia">Tecnico de Anestesia</option>
               <option value="Ecografia">Ecografia</option>
@@ -161,7 +163,6 @@
 
           <div class="col-md-5">
             <label class="form-label text-light fw-bold small">Número Interno (Opcional)</label>
-            <!-- Bloqueo absoluto de heurística de tarjeta: autocomplete one-time-code y nombre neutro -->
             <input 
               type="text" 
               id="interno" 
@@ -191,6 +192,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=8"></script>
+  <script src="js/formulario.js?v=9"></script>
 </body>
 </html>
