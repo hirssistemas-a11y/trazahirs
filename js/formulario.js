@@ -80,7 +80,7 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 1. Guardia Externa: mantiene 6, 12 y 24 hs
+  // 1. Guardia Externa: mantiene selector de 6, 12 y 24 hs
   if (srv.includes('Guardia externa')) {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
@@ -91,12 +91,12 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 2. Todos los demás servicios: modalidad fijada en 24 hs
+  // 2. Todos los demás servicios: 24 hs fija
   colDuracion.style.display = 'none';
   colTipo.className = 'col-md-4';
   colModalidad.className = 'col-md-8';
 
-  // Servicios que son de guardia ACTIVA (En Planta)
+  // Servicios con guardia ACTIVA (En Planta)
   const serviciosActivos = [
     'Neonatologia', 
     'Cirugia General', 
@@ -104,14 +104,14 @@ function actualizarHorariosSegunServicio() {
     'Parteras', 
     'Laboratorio', 
     'Cardiologia/Unidad Coronaria', 
-    'Anestesia', 
+    'Anestesista', 
+    'Tecnico de Anestesia', 
     'Instrumentadoras'
   ];
 
   if (serviciosActivos.includes(srv)) {
     selTipo.value = 'Activa';
   } else {
-    // Obstetricia, Ginecologia, Ecografía, Sistemas, etc. son PASIVAS
     selTipo.value = 'Pasiva';
   }
   selTipo.disabled = true;
