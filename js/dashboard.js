@@ -6,6 +6,7 @@ var tokenAdmin = sessionStorage.getItem("admin_pin") || null;
 var historialCompleto = [];
 var guardiasEnVivo = [];
 var guardiasIncumplidasLista = [];
+var logsAuditoriaLista = [];
 var referentesCache = {};
 
 var modalInstance = null;
@@ -13,6 +14,7 @@ var modalConfirmarInstance = null;
 var modalContactoInstance = null;
 var modalJefesInstance = null;
 var modalIncumplidasInstance = null;
+var modalLogsInstance = null;
 
 var guardiaPendienteReporte = null;
 var cargandoDatos = false;
@@ -512,7 +514,7 @@ function renderizarTablaHistorial(datos) {
 }
 
 async function eliminarFila(id) {
-  if (!confirm('¿Seguro que deseas eliminar este registro de guardia?')) return;
+  if (!confirm('¿Seguro que deseas eliminar este registro de guardia? Quedará registrado en el log de auditoría.')) return;
   try {
     var { error } = await db.from('guardias').delete().eq('id', id);
     if (error) throw error;
@@ -760,6 +762,111 @@ function exportarExcelIncumplidas() {
 
   var fechaHoy = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, "Reporte_Incidentes_Guardias_HIRS_" + fechaHoy + ".xlsx");
+}
+
+// -------------------------------------------------------------
+// GESTIÓN DE AUDITORÍA INMUTABLE (LOGS DE ACCIONES)
+// -------------------------------------------------------------
+
+async function abrirModalLogs() {
+  if (!tokenAdmin) return;
+  if (!modalLogsInstance) {
+    modalLogsInstance = new bootstrap.Modal(document.getElementById('modalLogs'));
+  }
+  await cargarTablaLogs();
+  modalLogsInstance.show();
+}
+
+async function cargarTablaLogs() {
+  var tbody = document.getElementById('tablaLogsBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center tabla-vacia">Cargando registros de auditoría...</td></tr>';
+
+  try {
+    const { data, error } = await db
+      .from('logs_auditoria')
+      .select('*')
+      .order('fecha_hora', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    logsAuditoriaLista = data || [];
+    tbody.innerHTML = '';
+
+    if (logsAuditoriaLista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center tabla-vacia text-success"><i class="bi bi-check-circle me-1"></i> No se han registrado movimientos en la base de datos.</td></tr>';
+      return;
+    }
+
+    logsAuditoriaLista.forEach(function(l) {
+      var fHora = l.fecha_hora ? new Date(l.fecha_hora).toLocaleString() : '-';
+      var badgeClass = 'bg-secondary';
+      if (l.operacion === 'ELIMINAR') badgeClass = 'bg-danger';
+      if (l.operacion === 'CREAR') badgeClass = 'bg-success';
+      if (l.operacion === 'ACTUALIZAR') badgeClass = 'bg-warning text-dark';
+
+      // Reconstrucción del resumen de lo que ocurrió
+      var detalle = '';
+      if (l.operacion === 'ELIMINAR') {
+        var ant = l.datos_anteriores || {};
+        detalle = 'Se eliminó guardia del ' + (ant.fecha_inicio || '?') + ' al ' + (ant.fecha_fin || '?') + ' (' + (ant.modalidad || '') + ')';
+      } else if (l.operacion === 'CREAR') {
+        var nvo = l.datos_nuevos || {};
+        detalle = 'Alta asignada para: ' + (nvo.fecha_inicio || '?') + ' al ' + (nvo.fecha_fin || '?') + ' | ' + (nvo.modalidad || '');
+      } else {
+        detalle = 'Modificación de registro';
+      }
+
+      tbody.innerHTML += '<tr>' +
+        '<td class="text-secondary">' + fHora + '</td>' +
+        '<td><span class="badge ' + badgeClass + '">' + l.operacion + '</span></td>' +
+        '<td class="text-secondary">' + (l.registro_id || '-') + '</td>' +
+        '<td class="fw-bold text-light">' + (l.servicio || '-') + '</td>' +
+        '<td>' + (l.responsable || '-') + '</td>' +
+        '<td class="text-info small">' + detalle + '</td>' +
+      '</tr>';
+    });
+
+  } catch(e) {
+    console.error("Error al cargar logs:", e);
+    tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Error al conectar con la base de datos de auditoría.</td></tr>';
+  }
+}
+
+function exportarExcelLogs() {
+  if (!logsAuditoriaLista || logsAuditoriaLista.length === 0) {
+    alert('No hay registros de auditoría para exportar.');
+    return;
+  }
+
+  var filas = logsAuditoriaLista.map(function(d) {
+    var ant = d.datos_anteriores ? JSON.stringify(d.datos_anteriores) : '';
+    var nvo = d.datos_nuevos ? JSON.stringify(d.datos_nuevos) : '';
+
+    return {
+      "ID Log": d.id,
+      "Fecha y Hora": d.fecha_hora ? new Date(d.fecha_hora).toLocaleString() : '',
+      "Operación": d.operacion || '',
+      "Tabla": d.tabla_afectada || '',
+      "ID Registro": d.registro_id || '',
+      "Servicio": d.servicio || '',
+      "Responsable": d.responsable || '',
+      "Datos Anteriores (JSON)": ant,
+      "Datos Nuevos (JSON)": nvo
+    };
+  });
+
+  var ws = XLSX.utils.json_to_sheet(filas);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+
+  ws['!cols'] = [
+    { wch: 10 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, 
+    { wch: 12 }, { wch: 26 }, { wch: 24 }, { wch: 35 }, { wch: 35 }
+  ];
+
+  var fechaHoy = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, "Logs_Auditoria_Guardias_HIRS_" + fechaHoy + ".xlsx");
 }
 
 if (tokenAdmin) activarModoAdmin();
