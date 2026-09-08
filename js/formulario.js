@@ -7,6 +7,10 @@ var modoActual = 'range';
 
 const selServicio = document.getElementById('servicio');
 const selTipo = document.getElementById('tipo');
+const selDuracion = document.getElementById('duracionTurno');
+const colDuracion = document.getElementById('colDuracion');
+const colModalidad = document.getElementById('colModalidad');
+const colTipo = document.getElementById('colTipo');
 const selModalidad = document.getElementById('modalidad');
 const formGuardia = document.getElementById('formGuardia');
 
@@ -44,67 +48,110 @@ function cambiarModoCalendario(mode) {
   }
 }
 
-// Parametrización dinámica de horarios según el servicio y tipo
-function actualizarHorariosSegunServicio() {
-  const opt = selServicio.options[selServicio.selectedIndex];
-  if (!opt || !opt.value) {
-    selModalidad.innerHTML = '<option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>';
-    return;
-  }
-
-  const tipoSugerido = opt.dataset.tipo || 'Activa';
-  const perfil = opt.dataset.perfil || 'medica';
-
-  // Sincronizar select de Tipo
-  selTipo.value = tipoSugerido;
-
-  // Cargar franjas horarias válidas
+// Generación de bloques de 6, 12 y 24 hs arrancando a las 08:00 AM
+function actualizarFranjasHorarias() {
+  const dur = selDuracion.value;
   selModalidad.innerHTML = '';
 
-  if (selTipo.value === 'Pasiva') {
-    if (perfil === 'operativa') {
-      selModalidad.innerHTML = `
-        <option value="Turno Rotativo / Pasiva">Pasiva según horario institucional (LV tarde/noche - Sab/Dom 24hs)</option>
-        <option value="Semanal Continuo">Semanal / Bloque Continuo</option>
-      `;
-    } else {
-      selModalidad.innerHTML = `
-        <option value="Turno Rotativo / Pasiva">Pasiva Continua / A llamado</option>
-        <option value="Semanal Continuo">Semanal / Bloque Completo</option>
-      `;
-    }
-  } else {
-    // Activa (En Planta)
-    if (opt.value.includes('Guardia externa') || opt.value === 'Neonatologia' || opt.value === 'Cirugia General') {
-      selModalidad.innerHTML = `
-        <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-        <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-        <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-      `;
-    } else {
-      selModalidad.innerHTML = `
-        <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
-        <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
-        <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
-        <option value="Turno Rotativo / Pasiva">Turno Rotativo</option>
-      `;
-    }
+  if (dur === '24') {
+    selModalidad.innerHTML = `
+      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
+    `;
+  } else if (dur === '12') {
+    selModalidad.innerHTML = `
+      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
+      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
+    `;
+  } else if (dur === '6') {
+    selModalidad.innerHTML = `
+      <option value="6 hs Mañana (08:00-14:00)">6 hs Mañana (08:00 a 14:00)</option>
+      <option value="6 hs Tarde (14:00-20:00)">6 hs Tarde (14:00 a 20:00)</option>
+      <option value="6 hs Noche (20:00-02:00)">6 hs Noche (20:00 a 02:00)</option>
+      <option value="6 hs Trasnoche (02:00-08:00)">6 hs Trasnoche (02:00 a 08:00)</option>
+    `;
   }
 }
 
-// Escuchar cambios de servicio y tipo
-selServicio.addEventListener('change', actualizarHorariosSegunServicio);
+// Parametrización dinámica según el servicio
+function actualizarHorariosSegunServicio() {
+  const srv = selServicio.value;
+  selModalidad.innerHTML = '';
 
-selTipo.addEventListener('change', function() {
-  if (selTipo.value === 'Pasiva') {
+  if (!srv) {
+    colDuracion.style.display = 'none';
+    colTipo.className = 'col-md-6';
+    colModalidad.className = 'col-md-6';
+    selModalidad.innerHTML = '<option value="">-- Seleccione un servicio primero --</option>';
+    return;
+  }
+
+  // 1. Guardias Externas (Adultos y Pediátrica): habilita 6, 12 y 24 hs iniciando a las 08:00 AM
+  if (srv.includes('Guardia externa')) {
+    selTipo.value = 'Activa';
+    selTipo.disabled = true;
+    colTipo.className = 'col-md-4';
+    colDuracion.style.display = 'block';
+    colModalidad.className = 'col-md-4';
+    actualizarFranjasHorarias();
+    return;
+  }
+
+  // Si no es guardia externa, ocultamos la duración intermedia
+  colDuracion.style.display = 'none';
+  colTipo.className = 'col-md-4';
+  colModalidad.className = 'col-md-8';
+
+  // 2. Servicios Médicos de Planta Activa (24 hs o 12 hs Diurna/Nocturna)
+  const serviciosMedicosActivos = [
+    'Neonatologia', 'Cirugia General', 'Traumatologia', 
+    'Obstetricia', 'Laboratorio', 'Cardiologia/Unidad Coronaria', 
+    'Anestesia', 'Instrumentadoras'
+  ];
+
+  // 3. Servicios Médicos y Técnicos con Guardias Pasivas (A Demanda continua)
+  const serviciosMedicosPasivos = [
+    'Ecografia', 'IGEA', 'Tecnico de Imagenes'
+  ];
+
+  // 4. Servicios Operativos Mixtos (L-V tarde/noche y Fines de semana 24 hs)
+  const serviciosOperativosMixtos = [
+    'Sistemas', 'Electromedicina', 'Farmacia', 
+    'Esterilizacion', 'Hemoterapia', 'RX Quirofano'
+  ];
+
+  if (serviciosMedicosActivos.includes(srv)) {
+    selTipo.value = 'Activa';
+    selTipo.disabled = true;
     selModalidad.innerHTML = `
-      <option value="Turno Rotativo / Pasiva">Turno Continuo / Pasiva</option>
-      <option value="Semanal Continuo">Semanal / Bloque Continuo</option>
+      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
+      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
+      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
+    `;
+  } else if (serviciosMedicosPasivos.includes(srv) || srv === 'Mantenimiento') {
+    selTipo.value = 'Pasiva';
+    selTipo.disabled = true;
+    selModalidad.innerHTML = `
+      <option value="Turno Rotativo / Pasiva">Pasiva a Demanda (24 hs continua a llamado)</option>
+    `;
+  } else if (serviciosOperativosMixtos.includes(srv)) {
+    selTipo.value = 'Pasiva';
+    selTipo.disabled = true;
+    selModalidad.innerHTML = `
+      <option value="Turno Rotativo / Pasiva">Pasiva Institucional (L-V tarde/noche - Sáb/Dom 24hs)</option>
+      <option value="24 hs (08:00-08:00)">24 hs (Refuerzo Fin de semana / Feriado)</option>
     `;
   } else {
-    actualizarHorariosSegunServicio();
+    selTipo.disabled = false;
+    selModalidad.innerHTML = `
+      <option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>
+      <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
+      <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
+      <option value="Turno Rotativo / Pasiva">Turno Continuo / Pasiva</option>
+    `;
   }
-});
+}
+
+selServicio.addEventListener('change', actualizarHorariosSegunServicio);
 
 // Envío a Supabase
 formGuardia.addEventListener('submit', async function(e) {
@@ -122,7 +169,7 @@ formGuardia.addEventListener('submit', async function(e) {
 
   if (!db) {
     feed.className = 'alert alert-danger';
-    feed.innerText = 'Error: Base de datos Supabase no configurada en js/config.js.';
+    feed.innerText = 'Error: Base de datos Supabase no conectada. Verifique js/config.js.';
     feed.style.display = 'block';
     return;
   }
@@ -148,7 +195,6 @@ formGuardia.addEventListener('submit', async function(e) {
         fin: formatearFechaLocalISO(fFin)
       });
     } else {
-      // Días específicos seleccionados
       fpInstance.selectedDates.forEach(function(d) {
         const str = formatearFechaLocalISO(d);
         fechasParaInsertar.push({ inicio: str, fin: str });
@@ -178,7 +224,6 @@ formGuardia.addEventListener('submit', async function(e) {
     feed.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Se registraron exitosamente ' + filas.length + ' guardia(s).';
     feed.style.display = 'block';
 
-    // Resetear campos manteniendo el servicio si se desea seguir cargando
     document.getElementById('responsable').value = '';
     document.getElementById('contacto').value = '';
     document.getElementById('interno').value = '';
@@ -196,6 +241,5 @@ formGuardia.addEventListener('submit', async function(e) {
   }
 });
 
-// Inicio por defecto
 initFlatpickr('range');
 actualizarHorariosSegunServicio();
