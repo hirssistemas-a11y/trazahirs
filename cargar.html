@@ -12,11 +12,34 @@
   <style>
     body { background-color: #0b1329; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; }
     .card-form { border-radius: 12px; background-color: #162238; border: 1px solid #223454; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .form-control, .form-select { background-color: #0f172a; border: 1px solid #334155; color: #fff; }
-    .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+    
+    /* Corrección de color de texto para evitar negro sobre negro */
+    .form-control, .form-select { 
+      background-color: #0f172a !important; 
+      border: 1px solid #334155 !important; 
+      color: #ffffff !important; 
+    }
+    .form-control::placeholder { 
+      color: #94a3b8 !important; 
+      opacity: 0.9; 
+    }
+    .form-control:focus, .form-select:focus { 
+      background-color: #0f172a !important; 
+      color: #ffffff !important; 
+      border-color: #38bdf8 !important; 
+      box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.25) !important; 
+    }
+    .form-select option, .form-select optgroup {
+      background-color: #0f172a !important;
+      color: #ffffff !important;
+    }
+    .form-select:disabled, .form-control:disabled {
+      background-color: #1e293b !important;
+      color: #cbd5e1 !important;
+      opacity: 0.85;
+    }
     .form-text { color: #94a3b8; }
     .logo-img { height: 50px; width: auto; object-fit: contain; }
-    .badge-info-tipo { font-size: 0.75rem; letter-spacing: 0.5px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -45,49 +68,58 @@
           <label class="form-label text-light fw-bold small">Servicio *</label>
           <select id="servicio" class="form-select" required>
             <option value="">-- Seleccione un Servicio --</option>
-            <optgroup label="Servicios Médicos / Profesionales">
-              <option value="Guardia externa Adultos" data-tipo="Activa" data-perfil="medica">Guardia externa Adultos</option>
-              <option value="Guardia externa Pediatrica" data-tipo="Activa" data-perfil="medica">Guardia externa Pediatrica</option>
-              <option value="Neonatologia" data-tipo="Activa" data-perfil="medica">Neonatologia</option>
-              <option value="Cirugia General" data-tipo="Activa" data-perfil="medica">Cirugia General</option>
-              <option value="Traumatologia" data-tipo="Activa" data-perfil="medica">Traumatologia</option>
-              <option value="Obstetricia" data-tipo="Activa" data-perfil="medica">Obstetricia</option>
-              <option value="Laboratorio" data-tipo="Activa" data-perfil="medica">Laboratorio</option>
-              <option value="Cardiologia/Unidad Coronaria" data-tipo="Activa" data-perfil="medica">Cardiologia/Unidad Coronaria</option>
-              <option value="Anestesia" data-tipo="Activa" data-perfil="medica">Anestesia</option>
-              <option value="Ecografia" data-tipo="Pasiva" data-perfil="pasiva_continua">Ecografia</option>
-              <option value="IGEA" data-tipo="Pasiva" data-perfil="pasiva_continua">IGEA</option>
+            <optgroup label="Servicios Médicos / Asistenciales">
+              <option value="Guardia externa Adultos">Guardia externa Adultos</option>
+              <option value="Guardia externa Pediatrica">Guardia externa Pediatrica</option>
+              <option value="Neonatologia">Neonatologia</option>
+              <option value="Cirugia General">Cirugia General</option>
+              <option value="Traumatologia">Traumatologia</option>
+              <option value="Obstetricia">Obstetricia</option>
+              <option value="Laboratorio">Laboratorio</option>
+              <option value="Cardiologia/Unidad Coronaria">Cardiologia/Unidad Coronaria</option>
+              <option value="Anestesia">Anestesia</option>
+              <option value="Ecografia">Ecografia</option>
+              <option value="IGEA">IGEA</option>
+              <option value="Tecnico de Imagenes">Tecnico de Imagenes</option>
             </optgroup>
             <optgroup label="Servicios Operativos / Apoyo">
-              <option value="Sistemas" data-tipo="Pasiva" data-perfil="operativa">Sistemas</option>
-              <option value="Electromedicina" data-tipo="Pasiva" data-perfil="operativa">Electromedicina</option>
-              <option value="Farmacia" data-tipo="Pasiva" data-perfil="operativa">Farmacia</option>
-              <option value="Instrumentadoras" data-tipo="Activa" data-perfil="medica">Instrumentadoras</option>
-              <option value="Mantenimiento" data-tipo="Pasiva" data-perfil="pasiva_continua">Mantenimiento</option>
-              <option value="Esterilizacion" data-tipo="Pasiva" data-perfil="operativa">Esterilizacion</option>
-              <option value="Hemoterapia" data-tipo="Pasiva" data-perfil="operativa">Hemoterapia</option>
-              <option value="RX Quirofano" data-tipo="Pasiva" data-perfil="operativa">RX Quirofano</option>
-              <option value="Tecnico de Imagenes" data-tipo="Pasiva" data-perfil="pasiva_continua">Tecnico de Imagenes</option>
+              <option value="Sistemas">Sistemas</option>
+              <option value="Electromedicina">Electromedicina</option>
+              <option value="Farmacia">Farmacia</option>
+              <option value="Instrumentadoras">Instrumentadoras</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Esterilizacion">Esterilizacion</option>
+              <option value="Hemoterapia">Hemoterapia</option>
+              <option value="RX Quirofano">RX Quirofano</option>
             </optgroup>
           </select>
         </div>
 
         <div class="row g-3 mb-3">
           <!-- Tipo de Guardia -->
-          <div class="col-md-6">
+          <div class="col-md-4" id="colTipo">
             <label class="form-label text-light fw-bold small">Tipo de Guardia *</label>
             <select id="tipo" class="form-select" required>
               <option value="Activa">Activa (En Planta)</option>
-              <option value="Pasiva">Pasiva</option>
+              <option value="Pasiva">Pasiva (A demanda)</option>
             </select>
-            <div class="form-text" id="ayudaTipo">Configurado automáticamente según el servicio.</div>
           </div>
 
-          <!-- Modalidad / Horario Dependiente -->
-          <div class="col-md-6">
+          <!-- Duración del Turno (Para Guardia Externa) -->
+          <div class="col-md-4" id="colDuracion" style="display: none;">
+            <label class="form-label text-light fw-bold small">Duración del Turno *</label>
+            <select id="duracionTurno" class="form-select" onchange="actualizarFranjasHorarias()">
+              <option value="24">24 Horas</option>
+              <option value="12">12 Horas</option>
+              <option value="6">6 Horas</option>
+            </select>
+          </div>
+
+          <!-- Modalidad / Franja Horaria -->
+          <div class="col-md-8" id="colModalidad">
             <label class="form-label text-light fw-bold small">Modalidad / Franja Horaria *</label>
             <select id="modalidad" class="form-select" required>
-              <!-- Dinámico mediante formulario.js -->
+              <option value="">-- Seleccione un servicio primero --</option>
             </select>
           </div>
         </div>
@@ -110,21 +142,21 @@
         <!-- Profesional / Responsable -->
         <div class="mb-3">
           <label class="form-label text-light fw-bold small">Nombre y Apellido del Responsable *</label>
-          <input type="text" id="responsable" class="form-control" placeholder="Ej: Dr. Pérez Juan / Ing. Gómez Lucas" required>
+          <input type="text" id="responsable" class="form-control" placeholder="Ej: Dr. Pérez Juan" required>
         </div>
 
-        <!-- Contacto: WhatsApp / Móvil e Interno Opcional -->
+        <!-- Contactos -->
         <div class="row g-3 mb-4">
           <div class="col-md-7">
             <label class="form-label text-light fw-bold small">WhatsApp / Teléfono Móvil *</label>
             <input type="tel" id="contacto" class="form-control" placeholder="Ej: 2914123456" required>
-            <div class="form-text">Sin 0 ni 15. Usado para enlaces directos de llamada y chat.</div>
+            <div class="form-text">Sin 0 ni 15. Usado para llamadas y chat directo de WhatsApp.</div>
           </div>
 
           <div class="col-md-5">
             <label class="form-label text-light fw-bold small">Número Interno (Opcional)</label>
             <input type="text" id="interno" class="form-control" placeholder="Ej: 1420">
-            <div class="form-text">Interno estático para consulta visual en el monitor.</div>
+            <div class="form-text">Interno estático para consulta visual en planta.</div>
           </div>
         </div>
 
