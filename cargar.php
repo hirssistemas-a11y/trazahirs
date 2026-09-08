@@ -60,7 +60,11 @@
     </div>
 
     <div class="card card-form p-4">
-      <form id="formGuardia" autocomplete="off">
+      <form id="formGuardia" autocomplete="off" onsubmit="return false;">
+
+        <!-- Inputs señuelo ocultos para desactivar heurísticas de autocompletado de Chrome -->
+        <input type="text" style="display:none" aria-hidden="true">
+        <input type="password" style="display:none" aria-hidden="true">
 
         <!-- Servicio -->
         <div class="mb-3">
@@ -137,37 +141,38 @@
               <i class="bi bi-calendar-week"></i> Días Específicos
             </button>
           </div>
-          <input type="text" id="selectorFechas" class="form-control" placeholder="Seleccione fecha(s)..." required autocomplete="off">
+          <input type="text" id="selectorFechas" class="form-control" placeholder="Seleccione fecha(s)..." required autocomplete="chrome-off">
           <div class="form-text" id="ayudaFechas">Seleccione una fecha de inicio y una de fin para cubrir el bloque.</div>
         </div>
 
         <!-- Profesional / Responsable -->
         <div class="mb-3">
           <label class="form-label text-light fw-bold small">Nombre y Apellido del Responsable *</label>
-          <input type="text" id="responsable" name="responsable_nombre" class="form-control" placeholder="Ej: Dr. Pérez Juan" required autocomplete="off">
+          <input type="text" id="responsable" name="responsable_nombre" class="form-control" placeholder="Ej: Dr. Pérez Juan" required autocomplete="chrome-off">
         </div>
 
         <!-- Contactos -->
         <div class="row g-3 mb-4">
           <div class="col-md-7">
             <label class="form-label text-light fw-bold small">WhatsApp / Teléfono Móvil *</label>
-            <input type="tel" id="contacto" name="telefono_guardia" class="form-control" placeholder="Ej: 2914123456" required autocomplete="off">
+            <input type="tel" id="contacto" name="telefono_contacto_hirs" class="form-control" placeholder="Ej: 2914123456" required autocomplete="chrome-off">
             <div class="form-text">Sin 0 ni 15. Usado para llamadas y chat directo de WhatsApp.</div>
           </div>
 
           <div class="col-md-5">
             <label class="form-label text-light fw-bold small">Número Interno (Opcional)</label>
+            <!-- Bloqueo absoluto de heurística de tarjeta: autocomplete one-time-code y nombre neutro -->
             <input 
               type="text" 
               id="interno" 
-              name="interno_hospitalario_hirs" 
+              name="hirs_anexo_piso" 
               class="form-control" 
               placeholder="Ej: 1420" 
-              autocomplete="off" 
+              autocomplete="one-time-code" 
               autocorrect="off" 
               autocapitalize="off" 
-              spellcheck="false" 
-              inputmode="numeric">
+              spellcheck="false"
+              oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             <div class="form-text">Interno estático para consulta visual en planta.</div>
           </div>
         </div>
@@ -186,6 +191,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=7"></script>
+  <script src="js/formulario.js?v=8"></script>
 </body>
 </html>
