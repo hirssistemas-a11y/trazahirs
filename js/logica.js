@@ -90,7 +90,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
       }
     }
 
-    // Fallback Activa por defecto
+    // Fallback Activa
     var iniDef = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
     var finDef = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
     finDef.setDate(finDef.getDate() + 1);
@@ -110,36 +110,36 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var srv = guardia.servicio || '';
 
-  // REGLA ECOGRAFÍA: Días de semana de 12:00 a 20:00 hs; Fines de semana las 24 hs
+  // Regla Ecografía
   if (srv === 'Ecografia') {
     if (esFinde) return true;
     return horaAhora >= 12 && horaAhora < 20;
   }
 
-  // Sistemas: Lunes a Viernes pasiva desde las 15:00 hs; Fines de semana las 24 hs
+  // Sistemas
   if (srv === 'Sistemas') {
     if (esFinde) return true;
     return horaAhora >= 15;
   }
 
-  // Electromedicina: Lunes a Viernes pasiva desde las 13:00 hs; Fines de semana las 24 hs
+  // Electromedicina
   if (srv === 'Electromedicina') {
     if (esFinde) return true;
     return horaAhora >= 13;
   }
 
-  // Farmacia: Lunes a Viernes pasiva desde las 16:00 hs; Fines de semana las 24 hs
+  // Farmacia
   if (srv === 'Farmacia') {
     if (esFinde) return true;
     return horaAhora >= 16;
   }
 
-  // RX Quirófano: Lunes a Viernes pasiva nocturna (20:00 a 08:00); Fines de semana las 24 hs
+  // RX Quirófano
   if (srv === 'RX Quirofano') {
     if (esFinde) return true;
     return horaAhora >= 20 || horaAhora < 8;
   }
 
-  // Resto de servicios pasivos a demanda (IGEA, Técnico de Imágenes, Mantenimiento, etc.):
+  // Resto de servicios pasivos continuos (Gastroenterologia, Ginecologia, Obstetricia, Tecnico de Imagenes, Mantenimiento, etc.):
   return true;
 }
