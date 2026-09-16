@@ -557,6 +557,6 @@ require '../defs/auth.php';
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=9"></script>
+  <script src="js/formulario.js?v=12"></script>
 </body>
 </html>
