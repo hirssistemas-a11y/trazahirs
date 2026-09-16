@@ -102,7 +102,8 @@ async function cargarDatos() {
           fechaFin: r.fecha_fin,
           responsable: r.responsable,
           contacto: r.contacto,
-          interno: r.interno
+          interno: r.interno,
+          observaciones: r.observaciones ? String(r.observaciones).trim() : null
         };
       })
       .filter(function(g) {
@@ -309,10 +310,30 @@ function renderizarTablasEnVivo(guardias) {
     if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
+
+    // Renderizado del badge de Observaciones (Guardia Restringida / Código Rojo)
+    var badgeObs = '';
+    var obsTexto = (g.observaciones || '').toString().trim();
+
+    if (obsTexto && obsTexto !== 'Normal Activa' && obsTexto !== 'null' && obsTexto !== 'undefined') {
+      var esCritico = obsTexto.toLowerCase().includes('rojo');
+      var colorFondo = esCritico ? '#dc2626' : '#d97706';
+      var icono = esCritico ? 'bi-exclamation-octagon-fill' : 'bi-exclamation-triangle-fill';
+
+      badgeObs = '<div style="margin-top: 4px;">' +
+                   '<span style="background-color: ' + colorFondo + ' !important; color: #ffffff !important; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-block; letter-spacing: 0.5px;">' +
+                     '<i class="bi ' + icono + ' me-1"></i>' + obsTexto.toUpperCase() +
+                   '</span>' +
+                 '</div>';
+    }
+
     var row = '<tr>' +
-      '<td class="fw-bold text-white">' + g.servicio + '</td>' +
-      '<td>' + g.responsable + '</td>' +
-      '<td>' + btns + '</td>' +
+      '<td>' +
+        '<div class="fw-bold text-white">' + g.servicio + '</div>' +
+        badgeObs +
+      '</td>' +
+      '<td class="align-middle">' + g.responsable + '</td>' +
+      '<td class="align-middle">' + btns + '</td>' +
     '</tr>';
 
     if (g.tipo === 'Activa') {
@@ -446,7 +467,8 @@ async function cargarHistorial() {
         fechaFin: d.fecha_fin,
         responsable: d.responsable,
         contacto: d.contacto,
-        interno: d.interno || ''
+        interno: d.interno || '',
+        observaciones: d.observaciones ? String(d.observaciones).trim() : ''
       };
     });
 
@@ -476,7 +498,8 @@ function filtrarHistorial() {
     var coincideTxt = !txt || 
       item.responsable.toLowerCase().includes(txt) || 
       item.contacto.toLowerCase().includes(txt) ||
-      item.interno.toLowerCase().includes(txt);
+      item.interno.toLowerCase().includes(txt) ||
+      item.observaciones.toLowerCase().includes(txt);
 
     var coincideServ = !serv || item.servicio === serv;
     var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
@@ -495,9 +518,15 @@ function renderizarTablaHistorial(datos) {
     return;
   }
   datos.forEach(function(d) {
+    var badgeObsHist = '';
+    if (d.observaciones && d.observaciones !== 'Normal Activa') {
+      var cB = d.observaciones.toLowerCase().includes('rojo') ? 'bg-danger' : 'bg-warning text-dark';
+      badgeObsHist = '<br><span class="badge ' + cB + ' py-0" style="font-size: 0.7rem;">' + d.observaciones + '</span>';
+    }
+
     tbody.innerHTML += '<tr>' +
       '<td class="text-secondary small">' + d.timestamp + '</td>' +
-      '<td class="fw-bold">' + d.servicio + '</td>' +
+      '<td class="fw-bold">' + d.servicio + badgeObsHist + '</td>' +
       '<td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td>' +
       '<td><small>' + d.modalidad + '</small></td>' +
       '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
@@ -536,7 +565,8 @@ function exportarExcelFiltrado() {
     var coincideTxt = !txt || 
       item.responsable.toLowerCase().includes(txt) || 
       item.contacto.toLowerCase().includes(txt) ||
-      item.interno.toLowerCase().includes(txt);
+      item.interno.toLowerCase().includes(txt) ||
+      item.observaciones.toLowerCase().includes(txt);
 
     var coincideServ = !serv || item.servicio === serv;
     var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
@@ -553,6 +583,7 @@ function exportarExcelFiltrado() {
     return {
       "Fecha Carga": d.timestamp || '',
       "Servicio": d.servicio || '',
+      "Observaciones": d.observaciones || 'Normal Activa',
       "Tipo": d.tipo || '',
       "Modalidad": d.modalidad || '',
       "Desde": d.fechaInicio || '',
@@ -568,7 +599,7 @@ function exportarExcelFiltrado() {
   XLSX.utils.book_append_sheet(wb, ws, "Guardias");
 
   ws['!cols'] = [
-    { wch: 18 }, { wch: 26 }, { wch: 10 }, { wch: 22 },
+    { wch: 18 }, { wch: 26 }, { wch: 18 }, { wch: 10 }, { wch: 22 },
     { wch: 12 }, { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 12 }
   ];
 
