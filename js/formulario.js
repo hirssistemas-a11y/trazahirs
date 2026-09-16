@@ -70,12 +70,17 @@ function actualizarFranjasHorarias() {
   }
 }
 
+function esServicioGuardiaExterna(servicio) {
+  var s = String(servicio || '').toLowerCase();
+  return s.includes('guardia externa') || s.includes('guardia adultos') || s.includes('guardia pediatrica');
+}
+
 function actualizarHorariosSegunServicio() {
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
 
-  // Control de visibilidad del campo Observaciones (solo Guardias Externas)
-  if (srv === 'Guardia externa Adultos' || srv === 'Guardia externa Pediatrica') {
+  // Control de visibilidad del campo Observaciones
+  if (esServicioGuardiaExterna(srv)) {
     if (colObservaciones) colObservaciones.style.display = 'block';
   } else {
     if (colObservaciones) {
@@ -93,7 +98,7 @@ function actualizarHorariosSegunServicio() {
   }
 
   // 1. Servicios con turnos configurables de 6, 12 y 24 hs (Guardia externa y UTI)
-  if (srv.includes('Guardia externa') || srv === 'UTI') {
+  if (srv.toLowerCase().includes('guardia externa') || srv === 'UTI') {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
     colTipo.className = 'col-md-4';
@@ -165,11 +170,11 @@ formGuardia.addEventListener('submit', async function(e) {
     const contactoValor = document.getElementById('contacto').value.trim();
     const internoValor = document.getElementById('interno').value.trim();
 
-    // Determinamos el valor de observaciones
+    // Guardado seguro de observaciones
     let obsValor = null;
-    if (servicioValor === 'Guardia externa Adultos' || servicioValor === 'Guardia externa Pediatrica') {
-      const val = selObservaciones ? selObservaciones.value : 'Normal Activa';
-      obsValor = (val !== 'Normal Activa') ? val : null;
+    if (esServicioGuardiaExterna(servicioValor)) {
+      var val = selObservaciones ? selObservaciones.value.trim() : 'Normal Activa';
+      obsValor = (val !== '' && val !== 'Normal Activa') ? val : null;
     }
 
     const fechasParaInsertar = [];
