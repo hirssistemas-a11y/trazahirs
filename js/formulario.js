@@ -12,8 +12,6 @@ const colDuracion = document.getElementById('colDuracion');
 const colModalidad = document.getElementById('colModalidad');
 const colTipo = document.getElementById('colTipo');
 const selModalidad = document.getElementById('modalidad');
-const colObservaciones = document.getElementById('colObservaciones');
-const selObservaciones = document.getElementById('observaciones');
 const formGuardia = document.getElementById('formGuardia');
 
 function initFlatpickr(mode) {
@@ -70,24 +68,9 @@ function actualizarFranjasHorarias() {
   }
 }
 
-function esServicioGuardiaExterna(servicio) {
-  var s = String(servicio || '').toLowerCase();
-  return s.includes('guardia externa') || s.includes('guardia adultos') || s.includes('guardia pediatrica');
-}
-
 function actualizarHorariosSegunServicio() {
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
-
-  // Control de visibilidad del campo Observaciones
-  if (esServicioGuardiaExterna(srv)) {
-    if (colObservaciones) colObservaciones.style.display = 'block';
-  } else {
-    if (colObservaciones) {
-      colObservaciones.style.display = 'none';
-      if (selObservaciones) selObservaciones.value = 'Normal Activa';
-    }
-  }
 
   if (!srv) {
     colDuracion.style.display = 'none';
@@ -98,7 +81,7 @@ function actualizarHorariosSegunServicio() {
   }
 
   // 1. Servicios con turnos configurables de 6, 12 y 24 hs (Guardia externa y UTI)
-  if (srv.toLowerCase().includes('guardia externa') || srv === 'UTI') {
+  if (srv.includes('Guardia externa') || srv === 'UTI') {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
     colTipo.className = 'col-md-4';
@@ -170,13 +153,6 @@ formGuardia.addEventListener('submit', async function(e) {
     const contactoValor = document.getElementById('contacto').value.trim();
     const internoValor = document.getElementById('interno').value.trim();
 
-    // Guardado seguro de observaciones
-    let obsValor = null;
-    if (esServicioGuardiaExterna(servicioValor)) {
-      var val = selObservaciones ? selObservaciones.value.trim() : 'Normal Activa';
-      obsValor = (val !== '' && val !== 'Normal Activa') ? val : null;
-    }
-
     const fechasParaInsertar = [];
 
     if (modoActual === 'range') {
@@ -202,8 +178,7 @@ formGuardia.addEventListener('submit', async function(e) {
         fecha_fin: item.fin,
         responsable: respValor,
         contacto: contactoValor,
-        interno: internoValor || null,
-        observaciones: obsValor
+        interno: internoValor || null
       };
     });
 
@@ -221,7 +196,6 @@ formGuardia.addEventListener('submit', async function(e) {
     document.getElementById('contacto').value = '';
     document.getElementById('interno').value = '';
     document.getElementById('selectorFechas').value = '';
-    if (selObservaciones) selObservaciones.value = 'Normal Activa';
     initFlatpickr(modoActual);
 
   } catch (err) {
