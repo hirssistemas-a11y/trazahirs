@@ -64,6 +64,7 @@ const REFERENTES_SERVICIOS = {
   'Esterilizacion': { nombre: 'Supervisión Esterilización', contacto: '2914000018' },
   'Hemoterapia': { nombre: 'Jefatura Hemoterapia', contacto: '2914000019' },
   'RX Quirofano': { nombre: 'Coordinación RX', contacto: '2914000020' }
+  'Clínica Médica': { nombre: 'Jefe', contacto: '2914000021' }
 };
 
 // Inicialización de cliente Supabase
