@@ -103,6 +103,19 @@
           </select>
         </div>
 
+        <!-- Observaciones / Estado Operativo (Visible SOLO para Guardias Externas) -->
+        <div class="mb-3" id="colObservaciones" style="display: none;">
+          <label class="form-label text-warning fw-bold small">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> Estado Operativo / Observaciones
+          </label>
+          <select id="observaciones" class="form-select border-warning">
+            <option value="Normal Activa">Normal Activa</option>
+            <option value="Guardia Restringida">Guardia Restringida</option>
+            <option value="Codigo Rojo">Código Rojo</option>
+          </select>
+          <div class="form-text">Indique si el servicio opera bajo modalidad restringida o código rojo.</div>
+        </div>
+
         <div class="row g-3 mb-3">
           <!-- Tipo de Guardia -->
           <div class="col-md-4" id="colTipo">
@@ -113,7 +126,7 @@
             </select>
           </div>
 
-          <!-- Duración del Turno (Visible SOLO para Guardia Externa) -->
+          <!-- Duración del Turno (Visible SOLO para Guardia Externa y UTI) -->
           <div class="col-md-4" id="colDuracion" style="display: none;">
             <label class="form-label text-light fw-bold small">Duración del Turno *</label>
             <select id="duracionTurno" class="form-select">
@@ -192,6 +205,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=9"></script>
+  <script src="js/formulario.js?v=10"></script>
 </body>
 </html>
