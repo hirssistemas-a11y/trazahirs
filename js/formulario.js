@@ -12,6 +12,8 @@ const colDuracion = document.getElementById('colDuracion');
 const colModalidad = document.getElementById('colModalidad');
 const colTipo = document.getElementById('colTipo');
 const selModalidad = document.getElementById('modalidad');
+const colObservaciones = document.getElementById('colObservaciones');
+const selObservaciones = document.getElementById('observaciones');
 const formGuardia = document.getElementById('formGuardia');
 
 function initFlatpickr(mode) {
@@ -69,10 +71,25 @@ function actualizarFranjasHorarias() {
   }
 }
 
+function esServicioGuardiaExterna(servicio) {
+  var s = String(servicio || '').toLowerCase();
+  return s.includes('guardia externa') || s.includes('adultos') || s.includes('pediatrica');
+}
+
 function actualizarHorariosSegunServicio() {
   if (!selServicio) return;
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
+
+  // Control de visibilidad del campo Observaciones
+  if (esServicioGuardiaExterna(srv)) {
+    if (colObservaciones) colObservaciones.style.display = 'block';
+  } else {
+    if (colObservaciones) {
+      colObservaciones.style.display = 'none';
+      if (selObservaciones) selObservaciones.value = 'Normal Activa';
+    }
+  }
 
   if (!srv) {
     if (colDuracion) colDuracion.style.display = 'none';
@@ -107,7 +124,8 @@ function actualizarHorariosSegunServicio() {
     'Laboratorio', 
     'Anestesista', 
     'Tecnico de Anestesia', 
-    'Instrumentadoras'
+    'Instrumentadoras',
+    'Clinica Medica'
   ];
 
   if (serviciosActivos.includes(srv)) {
@@ -166,6 +184,16 @@ if (formGuardia) {
       const contactoValor = document.getElementById('contacto').value.trim();
       const internoValor = document.getElementById('interno').value.trim();
 
+      // Captura segura de observaciones
+      let obsValor = null;
+      const srvLower = servicioValor.toLowerCase();
+      if (srvLower.includes('guardia externa') || srvLower.includes('adultos') || srvLower.includes('pediatrica')) {
+        const elObs = document.getElementById('observaciones');
+        if (elObs && elObs.value && elObs.value !== 'Normal Activa') {
+          obsValor = elObs.value.trim();
+        }
+      }
+
       const fechasParaInsertar = [];
 
       if (modoActual === 'range') {
@@ -191,7 +219,8 @@ if (formGuardia) {
           fecha_fin: item.fin,
           responsable: respValor,
           contacto: contactoValor,
-          interno: internoValor || null
+          interno: internoValor || null,
+          observaciones: obsValor
         };
       });
 
@@ -211,6 +240,7 @@ if (formGuardia) {
       document.getElementById('contacto').value = '';
       document.getElementById('interno').value = '';
       document.getElementById('selectorFechas').value = '';
+      if (selObservaciones) selObservaciones.value = 'Normal Activa';
       initFlatpickr(modoActual);
 
     } catch (err) {
