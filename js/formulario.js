@@ -48,6 +48,7 @@ function cambiarModoCalendario(mode) {
 }
 
 function actualizarFranjasHorarias() {
+  if (!selDuracion) return;
   const dur = selDuracion.value;
   selModalidad.innerHTML = '';
 
@@ -69,13 +70,14 @@ function actualizarFranjasHorarias() {
 }
 
 function actualizarHorariosSegunServicio() {
+  if (!selServicio) return;
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
 
   if (!srv) {
-    colDuracion.style.display = 'none';
-    colTipo.className = 'col-md-6';
-    colModalidad.className = 'col-md-6';
+    if (colDuracion) colDuracion.style.display = 'none';
+    if (colTipo) colTipo.className = 'col-md-6';
+    if (colModalidad) colModalidad.className = 'col-md-6';
     selModalidad.innerHTML = '<option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>';
     return;
   }
@@ -84,17 +86,17 @@ function actualizarHorariosSegunServicio() {
   if (srv.includes('Guardia externa') || srv === 'UTI') {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
-    colTipo.className = 'col-md-4';
-    colDuracion.style.display = 'block';
-    colModalidad.className = 'col-md-4';
+    if (colTipo) colTipo.className = 'col-md-4';
+    if (colDuracion) colDuracion.style.display = 'block';
+    if (colModalidad) colModalidad.className = 'col-md-4';
     actualizarFranjasHorarias();
     return;
   }
 
   // 2. Servicios restantes: modalidad fija en 24 hs
-  colDuracion.style.display = 'none';
-  colTipo.className = 'col-md-4';
-  colModalidad.className = 'col-md-8';
+  if (colDuracion) colDuracion.style.display = 'none';
+  if (colTipo) colTipo.className = 'col-md-4';
+  if (colModalidad) colModalidad.className = 'col-md-8';
 
   const serviciosActivos = [
     'Neonatologia', 
@@ -118,96 +120,114 @@ function actualizarHorariosSegunServicio() {
   selModalidad.innerHTML = '<option value="24 hs (08:00-08:00)">24 hs (08:00 a 08:00)</option>';
 }
 
-selServicio.addEventListener('change', actualizarHorariosSegunServicio);
-selDuracion.addEventListener('change', actualizarFranjasHorarias);
+if (selServicio) {
+  selServicio.addEventListener('change', actualizarHorariosSegunServicio);
+}
+if (selDuracion) {
+  selDuracion.addEventListener('change', actualizarFranjasHorarias);
+}
 
 // Envío a Supabase
-formGuardia.addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const btn = document.getElementById('btnGuardar');
-  const feed = document.getElementById('alertaFeedback');
-  feed.style.display = 'none';
+if (formGuardia) {
+  formGuardia.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnGuardar');
+    const feed = document.getElementById('alertaFeedback');
+    if (feed) feed.style.display = 'none';
 
-  if (!fpInstance || fpInstance.selectedDates.length === 0) {
-    feed.className = 'alert alert-warning';
-    feed.innerText = 'Debe seleccionar al menos una fecha o rango.';
-    feed.style.display = 'block';
-    return;
-  }
-
-  if (!db) {
-    feed.className = 'alert alert-danger';
-    feed.innerText = 'Error: Base de datos Supabase no conectada. Verifique js/config.js.';
-    feed.style.display = 'block';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando registros...';
-
-  try {
-    const servicioValor = selServicio.value;
-    const tipoValor = selTipo.value;
-    const modalidadValor = selModalidad.value;
-    const respValor = document.getElementById('responsable').value.trim();
-    const contactoValor = document.getElementById('contacto').value.trim();
-    const internoValor = document.getElementById('interno').value.trim();
-
-    const fechasParaInsertar = [];
-
-    if (modoActual === 'range') {
-      const fIni = fpInstance.selectedDates[0];
-      const fFin = fpInstance.selectedDates[1] || fIni;
-      fechasParaInsertar.push({
-        inicio: formatearFechaLocalISO(fIni),
-        fin: formatearFechaLocalISO(fFin)
-      });
-    } else {
-      fpInstance.selectedDates.forEach(function(d) {
-        const str = formatearFechaLocalISO(d);
-        fechasParaInsertar.push({ inicio: str, fin: str });
-      });
+    if (!fpInstance || fpInstance.selectedDates.length === 0) {
+      if (feed) {
+        feed.className = 'alert alert-warning';
+        feed.innerText = 'Debe seleccionar al menos una fecha o rango.';
+        feed.style.display = 'block';
+      }
+      return;
     }
 
-    const filas = fechasParaInsertar.map(function(item) {
-      return {
-        servicio: servicioValor,
-        tipo: tipoValor,
-        modalidad: modalidadValor,
-        fecha_inicio: item.inicio,
-        fecha_fin: item.fin,
-        responsable: respValor,
-        contacto: contactoValor,
-        interno: internoValor || null
-      };
-    });
+    if (!db) {
+      if (feed) {
+        feed.className = 'alert alert-danger';
+        feed.innerText = 'Error: Base de datos Supabase no conectada. Verifique js/config.js.';
+        feed.style.display = 'block';
+      }
+      return;
+    }
 
-    const { data, error } = await db
-      .from('guardias')
-      .insert(filas);
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando registros...';
+    }
 
-    if (error) throw error;
+    try {
+      const servicioValor = selServicio.value;
+      const tipoValor = selTipo.value;
+      const modalidadValor = selModalidad.value;
+      const respValor = document.getElementById('responsable').value.trim();
+      const contactoValor = document.getElementById('contacto').value.trim();
+      const internoValor = document.getElementById('interno').value.trim();
 
-    feed.className = 'alert alert-success';
-    feed.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Se registraron exitosamente ' + filas.length + ' guardia(s).';
-    feed.style.display = 'block';
+      const fechasParaInsertar = [];
 
-    document.getElementById('responsable').value = '';
-    document.getElementById('contacto').value = '';
-    document.getElementById('interno').value = '';
-    document.getElementById('selectorFechas').value = '';
-    initFlatpickr(modoActual);
+      if (modoActual === 'range') {
+        const fIni = fpInstance.selectedDates[0];
+        const fFin = fpInstance.selectedDates[1] || fIni;
+        fechasParaInsertar.push({
+          inicio: formatearFechaLocalISO(fIni),
+          fin: formatearFechaLocalISO(fFin)
+        });
+      } else {
+        fpInstance.selectedDates.forEach(function(d) {
+          const str = formatearFechaLocalISO(d);
+          fechasParaInsertar.push({ inicio: str, fin: str });
+        });
+      }
 
-  } catch (err) {
-    console.error("Error al registrar:", err);
-    feed.className = 'alert alert-danger';
-    feed.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i> Error: ' + (err.message || 'No se pudo guardar');
-    feed.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Asignación de Guardia';
-  }
-});
+      const filas = fechasParaInsertar.map(function(item) {
+        return {
+          servicio: servicioValor,
+          tipo: tipoValor,
+          modalidad: modalidadValor,
+          fecha_inicio: item.inicio,
+          fecha_fin: item.fin,
+          responsable: respValor,
+          contacto: contactoValor,
+          interno: internoValor || null
+        };
+      });
+
+      const { data, error } = await db
+        .from('guardias')
+        .insert(filas);
+
+      if (error) throw error;
+
+      if (feed) {
+        feed.className = 'alert alert-success';
+        feed.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Se registraron exitosamente ' + filas.length + ' guardia(s).';
+        feed.style.display = 'block';
+      }
+
+      document.getElementById('responsable').value = '';
+      document.getElementById('contacto').value = '';
+      document.getElementById('interno').value = '';
+      document.getElementById('selectorFechas').value = '';
+      initFlatpickr(modoActual);
+
+    } catch (err) {
+      console.error("Error al registrar:", err);
+      if (feed) {
+        feed.className = 'alert alert-danger';
+        feed.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i> Error: ' + (err.message || 'No se pudo guardar');
+        feed.style.display = 'block';
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar Asignación de Guardia';
+      }
+    }
+  });
+}
 
 initFlatpickr('range');
 actualizarHorariosSegunServicio();
