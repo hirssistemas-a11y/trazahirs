@@ -72,6 +72,7 @@
           <select id="servicio" class="form-select" required>
             <option value="">-- Seleccione un Servicio --</option>
             <optgroup label="Servicios Médicos / Asistenciales">
+              <option value="Clínica Médica">Clínica Médica</option>
               <option value="Guardia externa Adultos">Guardia externa Adultos</option>
               <option value="Guardia externa Pediatrica">Guardia externa Pediatrica</option>
               <option value="Neonatologia">Neonatologia</option>
