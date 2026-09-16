@@ -12,6 +12,8 @@ const colDuracion = document.getElementById('colDuracion');
 const colModalidad = document.getElementById('colModalidad');
 const colTipo = document.getElementById('colTipo');
 const selModalidad = document.getElementById('modalidad');
+const colObservaciones = document.getElementById('colObservaciones');
+const selObservaciones = document.getElementById('observaciones');
 const formGuardia = document.getElementById('formGuardia');
 
 function initFlatpickr(mode) {
@@ -71,6 +73,16 @@ function actualizarFranjasHorarias() {
 function actualizarHorariosSegunServicio() {
   const srv = selServicio.value;
   selModalidad.innerHTML = '';
+
+  // Control de visibilidad del campo Observaciones (solo Guardias Externas)
+  if (srv === 'Guardia externa Adultos' || srv === 'Guardia externa Pediatrica') {
+    if (colObservaciones) colObservaciones.style.display = 'block';
+  } else {
+    if (colObservaciones) {
+      colObservaciones.style.display = 'none';
+      if (selObservaciones) selObservaciones.value = 'Normal Activa';
+    }
+  }
 
   if (!srv) {
     colDuracion.style.display = 'none';
@@ -153,6 +165,13 @@ formGuardia.addEventListener('submit', async function(e) {
     const contactoValor = document.getElementById('contacto').value.trim();
     const internoValor = document.getElementById('interno').value.trim();
 
+    // Determinamos el valor de observaciones
+    let obsValor = null;
+    if (servicioValor === 'Guardia externa Adultos' || servicioValor === 'Guardia externa Pediatrica') {
+      const val = selObservaciones ? selObservaciones.value : 'Normal Activa';
+      obsValor = (val !== 'Normal Activa') ? val : null;
+    }
+
     const fechasParaInsertar = [];
 
     if (modoActual === 'range') {
@@ -178,7 +197,8 @@ formGuardia.addEventListener('submit', async function(e) {
         fecha_fin: item.fin,
         responsable: respValor,
         contacto: contactoValor,
-        interno: internoValor || null
+        interno: internoValor || null,
+        observaciones: obsValor
       };
     });
 
@@ -196,6 +216,7 @@ formGuardia.addEventListener('submit', async function(e) {
     document.getElementById('contacto').value = '';
     document.getElementById('interno').value = '';
     document.getElementById('selectorFechas').value = '';
+    if (selObservaciones) selObservaciones.value = 'Normal Activa';
     initFlatpickr(modoActual);
 
   } catch (err) {
