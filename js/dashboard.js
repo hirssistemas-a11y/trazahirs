@@ -102,7 +102,8 @@ async function cargarDatos() {
           fechaFin: r.fecha_fin,
           responsable: r.responsable,
           contacto: r.contacto,
-          interno: r.interno
+          interno: r.interno,
+          observaciones: r.observaciones || null
         };
       })
       .filter(function(g) {
@@ -309,8 +310,19 @@ function renderizarTablasEnVivo(guardias) {
     if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
+
+    // Generar badge condicional de Observaciones si es Restringida o Código Rojo
+    var badgeObs = '';
+    if (g.observaciones && g.observaciones !== 'Normal Activa') {
+      var badgeClase = (g.observaciones === 'Codigo Rojo') ? 'bg-danger text-white' : 'bg-warning text-dark';
+      var badgeIcono = (g.observaciones === 'Codigo Rojo') ? 'bi-exclamation-octagon-fill' : 'bi-exclamation-triangle-fill';
+      badgeObs = '<br><span class="badge ' + badgeClase + ' mt-1 small" style="font-size: 0.72rem; font-weight: bold;">' +
+                   '<i class="bi ' + badgeIcono + ' me-1"></i>' + g.observaciones +
+                 '</span>';
+    }
+
     var row = '<tr>' +
-      '<td class="fw-bold text-white">' + g.servicio + '</td>' +
+      '<td class="fw-bold text-white">' + g.servicio + badgeObs + '</td>' +
       '<td>' + g.responsable + '</td>' +
       '<td>' + btns + '</td>' +
     '</tr>';
@@ -446,7 +458,8 @@ async function cargarHistorial() {
         fechaFin: d.fecha_fin,
         responsable: d.responsable,
         contacto: d.contacto,
-        interno: d.interno || ''
+        interno: d.interno || '',
+        observaciones: d.observaciones || ''
       };
     });
 
@@ -476,7 +489,8 @@ function filtrarHistorial() {
     var coincideTxt = !txt || 
       item.responsable.toLowerCase().includes(txt) || 
       item.contacto.toLowerCase().includes(txt) ||
-      item.interno.toLowerCase().includes(txt);
+      item.interno.toLowerCase().includes(txt) ||
+      item.observaciones.toLowerCase().includes(txt);
 
     var coincideServ = !serv || item.servicio === serv;
     var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
@@ -495,9 +509,15 @@ function renderizarTablaHistorial(datos) {
     return;
   }
   datos.forEach(function(d) {
+    var badgeObsHist = '';
+    if (d.observaciones && d.observaciones !== 'Normal Activa') {
+      var cB = (d.observaciones === 'Codigo Rojo') ? 'bg-danger' : 'bg-warning text-dark';
+      badgeObsHist = '<br><span class="badge ' + cB + ' py-0" style="font-size: 0.7rem;">' + d.observaciones + '</span>';
+    }
+
     tbody.innerHTML += '<tr>' +
       '<td class="text-secondary small">' + d.timestamp + '</td>' +
-      '<td class="fw-bold">' + d.servicio + '</td>' +
+      '<td class="fw-bold">' + d.servicio + badgeObsHist + '</td>' +
       '<td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td>' +
       '<td><small>' + d.modalidad + '</small></td>' +
       '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
@@ -536,7 +556,8 @@ function exportarExcelFiltrado() {
     var coincideTxt = !txt || 
       item.responsable.toLowerCase().includes(txt) || 
       item.contacto.toLowerCase().includes(txt) ||
-      item.interno.toLowerCase().includes(txt);
+      item.interno.toLowerCase().includes(txt) ||
+      item.observaciones.toLowerCase().includes(txt);
 
     var coincideServ = !serv || item.servicio === serv;
     var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
@@ -553,6 +574,7 @@ function exportarExcelFiltrado() {
     return {
       "Fecha Carga": d.timestamp || '',
       "Servicio": d.servicio || '',
+      "Observaciones": d.observaciones || 'Normal Activa',
       "Tipo": d.tipo || '',
       "Modalidad": d.modalidad || '',
       "Desde": d.fechaInicio || '',
@@ -568,7 +590,7 @@ function exportarExcelFiltrado() {
   XLSX.utils.book_append_sheet(wb, ws, "Guardias");
 
   ws['!cols'] = [
-    { wch: 18 }, { wch: 26 }, { wch: 10 }, { wch: 22 },
+    { wch: 18 }, { wch: 26 }, { wch: 18 }, { wch: 10 }, { wch: 22 },
     { wch: 12 }, { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 12 }
   ];
 
@@ -805,7 +827,6 @@ async function cargarTablaLogs() {
       if (l.operacion === 'CREAR') badgeClass = 'bg-success';
       if (l.operacion === 'ACTUALIZAR') badgeClass = 'bg-warning text-dark';
 
-      // Reconstrucción del resumen de lo que ocurrió
       var detalle = '';
       if (l.operacion === 'ELIMINAR') {
         var ant = l.datos_anteriores || {};
