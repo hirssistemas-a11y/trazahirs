@@ -553,10 +553,10 @@ require '../defs/auth.php';
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
-  <script src="js/config.js"></script>
-  <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=12"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/logica.js"></script>
+<script src="js/dashboard.js"></script>
 </body>
 </html>
