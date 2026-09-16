@@ -89,6 +89,7 @@
               <option value="Ecografia">Ecografia</option>
               <option value="Gastroenterologia">Gastroenterologia</option>
               <option value="Tecnico de Imagenes">Tecnico de Imagenes</option>
+              <option value="Clinica Medica">Clinica Medica</option>
             </optgroup>
             <optgroup label="Servicios Operativos / Apoyo">
               <option value="Sistemas">Sistemas</option>
@@ -103,6 +104,16 @@
           </select>
         </div>
 
+        <!-- Estado / Observaciones (Visible solo para Guardia Externa) -->
+        <div class="mb-3" id="colObservaciones" style="display: none;">
+          <label class="form-label text-warning fw-bold small">Estado / Novedad de Guardia</label>
+          <select id="observaciones" class="form-select">
+            <option value="Normal Activa">Normal Activa</option>
+            <option value="Guardia Restringida">Guardia Restringida</option>
+            <option value="Codigo Rojo">Código Rojo</option>
+          </select>
+        </div>
+
         <div class="row g-3 mb-3">
           <!-- Tipo de Guardia -->
           <div class="col-md-4" id="colTipo">
@@ -113,7 +124,7 @@
             </select>
           </div>
 
-          <!-- Duración del Turno (Visible SOLO para Guardia Externa) -->
+          <!-- Duración del Turno (Visible SOLO para Guardia Externa y UTI) -->
           <div class="col-md-4" id="colDuracion" style="display: none;">
             <label class="form-label text-light fw-bold small">Duración del Turno *</label>
             <select id="duracionTurno" class="form-select">
@@ -132,15 +143,6 @@
           </div>
         </div>
 
-           <!-- Observaciones / Estado de Guardia -->
-  <div class="mb-3" id="colObservaciones" style="display: none;">
-    <label class="form-label text-warning fw-bold small">Estado / Novedad de Guardia</label>
-    <select id="observaciones" class="form-select">
-      <option value="Normal Activa">Normal Activa</option>
-      <option value="Guardia Restringida">Guardia Restringida</option>
-      <option value="Codigo Rojo">Código Rojo</option>
-    </select>
-  </div>
         <!-- Selección de Fechas -->
         <div class="mb-3">
           <label class="form-label text-light fw-bold small">Fecha o Rango de Cobertura *</label>
@@ -201,6 +203,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=9"></script>
+  <script src="js/formulario.js?v=13"></script>
 </body>
 </html>
