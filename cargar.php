@@ -132,6 +132,15 @@
           </div>
         </div>
 
+           <!-- Observaciones / Estado de Guardia -->
+  <div class="mb-3" id="colObservaciones" style="display: none;">
+    <label class="form-label text-warning fw-bold small">Estado / Novedad de Guardia</label>
+    <select id="observaciones" class="form-select">
+      <option value="Normal Activa">Normal Activa</option>
+      <option value="Guardia Restringida">Guardia Restringida</option>
+      <option value="Codigo Rojo">Código Rojo</option>
+    </select>
+  </div>
         <!-- Selección de Fechas -->
         <div class="mb-3">
           <label class="form-label text-light fw-bold small">Fecha o Rango de Cobertura *</label>
