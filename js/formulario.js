@@ -99,8 +99,8 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 1. Servicios con turnos configurables de 6, 12 y 24 hs (Guardia externa y UTI)
-  if (srv.includes('Guardia externa') || srv === 'UTI') || srv === 'Neonatologia') {
+  // 1. Servicios con turnos configurables de 6, 12 y 24 hs (Guardia externa, UTI y Neonatologia)
+  if (srv.includes('Guardia externa') || srv === 'UTI' || srv === 'Neonatologia') {
     selTipo.value = 'Activa';
     selTipo.disabled = true;
     if (colTipo) colTipo.className = 'col-md-4';
