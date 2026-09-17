@@ -61,12 +61,25 @@ function actualizarFranjasHorarias() {
       <option value="12 hs Diurna (08:00-20:00)">12 hs Diurna (08:00 a 20:00)</option>
       <option value="12 hs Nocturna (20:00-08:00)">12 hs Nocturna (20:00 a 08:00)</option>
     `;
-  } else if (dur === '6') {
-    selModalidad.innerHTML = `
-      <option value="6 hs Mañana (08:00-14:00)">6 hs Mañana (08:00 a 14:00)</option>
-      <option value="6 hs Tarde (14:00-20:00)">6 hs Tarde (14:00 a 20:00)</option>
-      <option value="6 hs Noche (20:00-02:00)">6 hs Noche (20:00 a 02:00)</option>
-      <option value="6 hs Trasnoche (02:00-08:00)">6 hs Trasnoche (02:00 a 08:00)</option>
+  }
+}
+
+function actualizarOpcionesDuracion(esNeonatologia) {
+  if (!selDuracion) return;
+  selDuracion.innerHTML = '';
+  
+  if (esNeonatologia) {
+    // Neonatología solo permite 24 y 12 horas
+    selDuracion.innerHTML = `
+      <option value="24">24 Horas</option>
+      <option value="12">12 Horas</option>
+    `;
+  } else {
+    // Guardia Externa / UTI habituales (24, 12 y 6 horas)
+    selDuracion.innerHTML = `
+      <option value="24">24 Horas</option>
+      <option value="12">12 Horas</option>
+      <option value="6">6 Horas</option>
     `;
   }
 }
@@ -99,10 +112,10 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 1. Servicios con turnos configurables de 6, 12 y 24 hs (Guardia externa, UTI y Neonatologia)
-  if (srv.includes('Guardia externa') || srv === 'UTI' || srv === 'Neonatologia') {
-    selTipo.value = 'Activa';
-    selTipo.disabled = true;
+  // 1. Neonatología (Turnos de 24 y 12 hs, permite Activa o Pasiva)
+  if (srv === 'Neonatologia') {
+    selTipo.disabled = false; // Permite elegir Activa o Pasiva
+    actualizarOpcionesDuracion(true);
     if (colTipo) colTipo.className = 'col-md-4';
     if (colDuracion) colDuracion.style.display = 'block';
     if (colModalidad) colModalidad.className = 'col-md-4';
@@ -110,7 +123,19 @@ function actualizarHorariosSegunServicio() {
     return;
   }
 
-  // 2. Servicios restantes: modalidad fija en 24 hs
+  // 2. Servicios con turnos configurables forzados a Activa (Guardia externa y UTI)
+  if (srv.includes('Guardia externa') || srv === 'UTI') {
+    selTipo.value = 'Activa';
+    selTipo.disabled = true;
+    actualizarOpcionesDuracion(false);
+    if (colTipo) colTipo.className = 'col-md-4';
+    if (colDuracion) colDuracion.style.display = 'block';
+    if (colModalidad) colModalidad.className = 'col-md-4';
+    actualizarFranjasHorarias();
+    return;
+  }
+
+  // 3. Servicios restantes: modalidad fija en 24 hs
   if (colDuracion) colDuracion.style.display = 'none';
   if (colTipo) colTipo.className = 'col-md-4';
   if (colModalidad) colModalidad.className = 'col-md-8';
