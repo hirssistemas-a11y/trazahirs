@@ -295,7 +295,7 @@ require '../defs/auth.php';
     <div class="row g-2 mb-3">
       <div class="col-md-3">
         <label class="form-label text-secondary small">Buscar por Nombre o Contacto:</label>
-        <input type="text" id="filtroNombre" class="form-control form-control-sm filtro-input" placeholder="Ej: Perez / 1420..." oninput="filtrarHistorial()">
+        <input type="text" id="filtroNombre" class="form-control" placeholder="..." autocomplete="new-password" oninput="filtrarHistorial()">
       </div>
       <div class="col-md-3">
         <label class="form-label text-secondary small">Servicio:</label>
