@@ -340,12 +340,12 @@ function renderizarTablasEnVivo(guardias) {
                  '</div>';
     }
 
-    // Cálculo del tiempo restante y relevo
+    // Cálculo del tiempo restante
     var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
     var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
 
-    // Regla de 48 horas: Solo mostrar si faltan <= 48 hs para que finalice la guardia
+    // Regla de 48 horas
     var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
     var mostrarDesplegable = (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS);
 
@@ -428,6 +428,34 @@ function renderizarTablasEnVivo(guardias) {
 // AUTOGESTIÓN DE REPORTES POR SERVICIO AUTENTICADO
 // -------------------------------------------------------------
 
+function obtenerServiciosSegunUsuario() {
+  var user = (typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '').toLowerCase().trim();
+  var nom = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '').trim();
+
+  // 1. Mapeo específico para Guardia (Adultos)
+  if (user === 'guardia' || nom.toLowerCase() === 'guardia') {
+    return {
+      etiqueta: 'Guardia Externa Adultos',
+      servicios: ['Guardia externa Adultos']
+    };
+  }
+
+  // 2. Mapeo específico para Pediatría (Pediatría + Neonatología)
+  if (user === 'pediatria' || nom.toLowerCase() === 'pediatria') {
+    return {
+      etiqueta: 'Pediatría y Neonatología',
+      servicios: ['Guardia externa Pediatrica', 'Neonatologia']
+    };
+  }
+
+  // 3. Resto de usuarios estándar
+  var nombreFinal = nom || user || 'Mi Servicio';
+  return {
+    etiqueta: nombreFinal,
+    servicios: [nombreFinal]
+  };
+}
+
 function abrirModalMiPlanilla() {
   if (!modalMiPlanillaInstance) {
     modalMiPlanillaInstance = new bootstrap.Modal(document.getElementById('modalMiPlanilla'));
@@ -437,8 +465,8 @@ function abrirModalMiPlanilla() {
   var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
   var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
 
-  var nombreAMostrar = (typeof SESION_NOMBRE !== 'undefined' && SESION_NOMBRE) ? SESION_NOMBRE : ((typeof SESION_USUARIO !== 'undefined') ? SESION_USUARIO : 'Mi Servicio');
-  document.getElementById('miServicioNombre').value = nombreAMostrar;
+  var mapeo = obtenerServiciosSegunUsuario();
+  document.getElementById('miServicioNombre').value = mapeo.etiqueta;
   document.getElementById('miPlanillaDesde').value = primerDia;
   document.getElementById('miPlanillaHasta').value = ultimoDia;
 
@@ -448,15 +476,16 @@ function abrirModalMiPlanilla() {
 async function exportarExcelMiServicio() {
   var dDesde = document.getElementById('miPlanillaDesde').value;
   var dHasta = document.getElementById('miPlanillaHasta').value;
-  var miServicio = (typeof SESION_NOMBRE !== 'undefined' && SESION_NOMBRE) ? SESION_NOMBRE : ((typeof SESION_USUARIO !== 'undefined') ? SESION_USUARIO : '');
-
-  if (!miServicio) {
-    alert("No se pudo detectar el servicio de la sesión activa.");
-    return;
-  }
+  var mapeo = obtenerServiciosSegunUsuario();
 
   try {
-    let query = db.from('guardias').select('*').ilike('servicio', '%' + miServicio + '%');
+    let query = db.from('guardias').select('*');
+
+    if (mapeo.servicios.length > 1) {
+      query = query.in('servicio', mapeo.servicios);
+    } else {
+      query = query.ilike('servicio', '%' + mapeo.servicios[0] + '%');
+    }
     
     if (dDesde) query = query.gte('fecha_inicio', dDesde);
     if (dHasta) query = query.lte('fecha_fin', dHasta);
@@ -465,7 +494,7 @@ async function exportarExcelMiServicio() {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      alert('No se encontraron guardias registradas para ' + miServicio + ' en el rango de fechas seleccionado.');
+      alert('No se encontraron guardias registradas para ' + mapeo.etiqueta + ' en el rango de fechas seleccionado.');
       return;
     }
 
@@ -486,7 +515,14 @@ async function exportarExcelMiServicio() {
     var ws = XLSX.utils.json_to_sheet(filas);
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Mis_Guardias");
-    XLSX.writeFile(wb, "Guardias_" + miServicio.replace(/\s+/g, '_') + "_" + dDesde + "_al_" + dHasta + ".xlsx");
+
+    ws['!cols'] = [
+      { wch: 26 }, { wch: 10 }, { wch: 22 }, { wch: 12 }, 
+      { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 20 }
+    ];
+
+    var nombreArchivo = "Guardias_" + mapeo.etiqueta.replace(/[\s\/]+/g, '_') + "_" + dDesde + "_al_" + dHasta + ".xlsx";
+    XLSX.writeFile(wb, nombreArchivo);
 
     if (modalMiPlanillaInstance) modalMiPlanillaInstance.hide();
   } catch(e) {
