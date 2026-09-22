@@ -4,6 +4,7 @@
 
 var tokenAdmin = sessionStorage.getItem("admin_pin") || null;
 var historialCompleto = [];
+var todasLasGuardiasRaw = [];
 var guardiasEnVivo = [];
 var guardiasIncumplidasLista = [];
 var logsAuditoriaLista = [];
@@ -86,29 +87,29 @@ async function cargarDatos() {
     const { data, error } = await db
       .from('guardias')
       .select('*')
-      .gte('fecha_fin', ayerStr);
+      .gte('fecha_fin', ayerStr)
+      .order('fecha_inicio', { ascending: true });
 
     if (error) throw error;
 
-    var listaRaw = data || [];
-    guardiasEnVivo = listaRaw
-      .map(function(r) {
-        return {
-          id: r.id,
-          servicio: r.servicio,
-          tipo: r.tipo,
-          modalidad: r.modalidad,
-          fechaInicio: r.fecha_inicio,
-          fechaFin: r.fecha_fin,
-          responsable: r.responsable,
-          contacto: r.contacto,
-          interno: r.interno,
-          observaciones: r.observaciones ? String(r.observaciones).trim() : null
-        };
-      })
-      .filter(function(g) {
-        return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, ahora) : true;
-      });
+    todasLasGuardiasRaw = (data || []).map(function(r) {
+      return {
+        id: r.id,
+        servicio: r.servicio,
+        tipo: r.tipo,
+        modalidad: r.modalidad,
+        fechaInicio: r.fecha_inicio,
+        fechaFin: r.fecha_fin,
+        responsable: r.responsable,
+        contacto: r.contacto,
+        interno: r.interno,
+        observaciones: r.observaciones ? String(r.observaciones).trim() : null
+      };
+    });
+
+    guardiasEnVivo = todasLasGuardiasRaw.filter(function(g) {
+      return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, ahora) : true;
+    });
 
     renderizarTablasEnVivo(guardiasEnVivo);
     cargandoDatos = false;
@@ -143,6 +144,19 @@ async function cargarReferentesDesdeBD() {
   } catch (e) {
     console.warn("No se pudo cargar referentes_servicios:", e);
   }
+}
+
+function buscarProximaGuardia(servicioActual, idActual, fechaFinActual) {
+  var candidatas = todasLasGuardiasRaw.filter(function(g) {
+    return g.servicio === servicioActual && g.id !== idActual && g.fechaInicio >= (fechaFinActual || '');
+  });
+  if (candidatas.length > 0) return candidatas[0];
+
+  var hoyIso = formatearFechaLocalISO(new Date());
+  var proximas = todasLasGuardiasRaw.filter(function(g) {
+    return g.servicio === servicioActual && g.id !== idActual && g.fechaInicio >= hoyIso;
+  });
+  return proximas.length > 0 ? proximas[0] : null;
 }
 
 function normalizarWhatsApp(tel) {
@@ -302,38 +316,83 @@ function renderizarTablasEnVivo(guardias) {
   var activasCount = 0;
   var pasivasCount = 0;
   var listaOperativos = (typeof SERVICIOS_OPERATIVOS !== 'undefined') ? SERVICIOS_OPERATIVOS : [];
+  var ahora = new Date();
 
-  guardias.forEach(function(g) {
+  guardias.forEach(function(g, index) {
     var esOperativo = listaOperativos.includes(g.servicio);
-    
     if (filtroCategoriaActual === 'profesional' && esOperativo) return;
     if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
 
-    // Renderizado del badge de Observaciones (Guardia Restringida / Código Rojo)
+    // Badge de Observaciones (Guardia Restringida / Código Rojo)
     var badgeObs = '';
     var obsTexto = (g.observaciones || '').toString().trim();
-
     if (obsTexto && obsTexto !== 'Normal Activa' && obsTexto !== 'null' && obsTexto !== 'undefined') {
       var esCritico = obsTexto.toLowerCase().includes('rojo');
       var colorFondo = esCritico ? '#dc2626' : '#d97706';
       var icono = esCritico ? 'bi-exclamation-octagon-fill' : 'bi-exclamation-triangle-fill';
-
       badgeObs = '<div style="margin-top: 4px;">' +
-                   '<span style="background-color: ' + colorFondo + ' !important; color: #ffffff !important; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-block; letter-spacing: 0.5px;">' +
+                   '<span style="background-color: ' + colorFondo + ' !important; color: #ffffff !important; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-block;">' +
                      '<i class="bi ' + icono + ' me-1"></i>' + obsTexto.toUpperCase() +
                    '</span>' +
                  '</div>';
     }
 
+    // Cálculo del tiempo restante y relevo
+    var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
+    var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
+    var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
+
+    var prox = buscarProximaGuardia(g.servicio, g.id, g.fechaFin);
+    var contenidoDesplegable = '';
+    var btnClaseAlerta = 'btn-outline-secondary';
+
+    if (prox) {
+      contenidoDesplegable = 
+        '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+          '<div><i class="bi bi-hourglass-split text-info me-1"></i> <strong>Cambio de guardia en:</strong> <span class="badge bg-primary text-white fs-6 py-1 px-2">' + tiempoRestanteTxt + '</span></div>' +
+          '<div><i class="bi bi-person-fill-up text-success me-1"></i> <strong>Sigue:</strong> ' +
+            '<strong class="text-white">' + prox.responsable + '</strong> ' +
+            '<span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span>' +
+            (prox.contacto ? ' • <i class="bi bi-telephone-fill text-info"></i> ' + prox.contacto : '') +
+            (prox.interno ? ' • <span class="badge bg-secondary">Int. ' + prox.interno + '</span>' : '') +
+          '</div>' +
+        '</div>';
+    } else {
+      btnClaseAlerta = 'btn-outline-danger';
+      contenidoDesplegable = 
+        '<div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 py-1">' +
+          '<i class="bi bi-exclamation-triangle-fill fs-5"></i> ' +
+          '<span>¡Alerta! No hay responsable de guardia dentro de: <u class="text-warning">' + tiempoRestanteTxt + '</u></span>' +
+        '</div>';
+    }
+
+    var collapseId = 'collapseProx_' + (g.id || index);
+
+    var btnDesplegable = '<button class="btn btn-sm ' + btnClaseAlerta + ' py-0 px-2 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" title="Ver información del próximo turno">' +
+                           '<i class="bi bi-clock-history me-1"></i> <small class="fw-bold">' + tiempoRestanteTxt + '</small> <i class="bi bi-chevron-down small"></i>' +
+                         '</button>';
+
     var row = '<tr>' +
       '<td>' +
-        '<div class="fw-bold text-white">' + g.servicio + '</div>' +
+        '<div class="d-flex align-items-center justify-content-between">' +
+          '<div class="fw-bold text-white">' + g.servicio + '</div>' +
+          btnDesplegable +
+        '</div>' +
         badgeObs +
       '</td>' +
       '<td class="align-middle">' + g.responsable + '</td>' +
       '<td class="align-middle">' + btns + '</td>' +
+    '</tr>' +
+    '<tr class="p-0 border-0">' +
+      '<td colspan="3" class="p-0 border-0">' +
+        '<div class="collapse" id="' + collapseId + '">' +
+          '<div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + (prox ? 'border-secondary' : 'border-danger') + ' border-opacity-75 small">' +
+            contenidoDesplegable +
+          '</div>' +
+        '</div>' +
+      '</td>' +
     '</tr>';
 
     if (g.tipo === 'Activa') {
