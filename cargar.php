@@ -203,6 +203,6 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="js/config.js"></script>
   <script src="js/logica.js"></script>
-  <script src="js/formulario.js?v=15"></script>
+  <script src="js/formulario.js?v=16"></script>
 </body>
 </html>
