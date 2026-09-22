@@ -181,38 +181,34 @@ $APP_FECHA   = "22/09/2026";
     </div>
     
     <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-      <!-- Botón Desplegable Ayuda -->
-      <div class="dropdown">
-        <button class="btn btn-outline-info btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-question-circle"></i> <span class="d-none d-sm-inline">Ayuda</span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark bg-dark border-secondary shadow">
-          <li>
-            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="https://wa.me/5492914617969?text=Hola!%20Necesito%20asistencia%20o%20soporte%20con%20el%20Panel%20de%20Guardias%20del%20Hospital%20Italiano." target="_blank" rel="noopener noreferrer">
-              <i class="bi bi-chat-dots text-warning fs-5"></i>
-              <div>
-                <div class="fw-bold">Contacto / Soporte</div>
-                <small class="text-secondary" style="font-size: 0.75rem;">Consultas técnicas o incidencias</small>
-              </div>
-            </a>
-          </li>
-        </ul>
-      </div>
+      <!-- Botón Descargar Mi Planilla (Autoservicio) -->
+      <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="abrirModalMiPlanilla()" title="Descargar planilla de mi servicio">
+        <i class="bi bi-file-earmark-spreadsheet"></i> <span class="d-none d-sm-inline">Mi Planilla</span>
+      </button>
 
+      <!-- Botón Ayuda / Soporte Directo -->
+      <a href="https://wa.me/5492914617969?text=Hola!%20Necesito%20asistencia%20o%20soporte%20con%20el%20Panel%20de%20Guardias%20del%20Hospital%20Italiano." target="_blank" rel="noopener noreferrer" class="btn btn-outline-info btn-sm fw-bold" title="Contactar a Sistemas por WhatsApp">
+        <i class="bi bi-question-circle"></i> <span class="d-none d-sm-inline">Ayuda</span>
+      </a>
+
+      <!-- Botón Cargar Guardia -->
       <a href="cargar.php" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Cargar Guardia</span>
       </a>
 
+      <!-- Botón Actualizar -->
       <button class="btn btn-outline-secondary btn-sm" onclick="forzarRefresco()" title="Actualizar datos ahora">
         <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-sm-inline">Actualizar</span>
       </button>
 
       <div id="reloj" class="clock-box px-2"></div>
 
+      <!-- Botón Administrador -->
       <button class="btn btn-admin btn-sm" onclick="abrirModalLogin()" id="btnAuth">
         <i class="bi bi-shield-lock"></i> <span class="d-none d-sm-inline">Administrador</span>
       </button>
 
+      <!-- Botón Cerrar Sesión General -->
       <a href="https://trazahirs.com/session/login.php?redirect_to=%2Fguardias%2F" class="btn btn-outline-danger btn-sm" title="Cerrar Sesión de Traza HIRS">
         <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Salir</span>
       </a>
@@ -371,6 +367,43 @@ $APP_FECHA   = "22/09/2026";
     <span class="mx-2">•</span>
     <span>Última versión: <strong id="lblFechaUpdate"><?php echo $APP_FECHA; ?></strong></span>
   </footer>
+
+  <!-- Modal Descargar Mi Planilla (Filtrado estricto por Servicio Autenticado) -->
+  <div class="modal fade" id="modalMiPlanilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark border-secondary text-white">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fs-6 text-info">
+            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Descargar Planilla de mi Servicio
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Servicio autenticado:</label>
+            <input type="text" id="miServicioNombre" class="form-control form-control-sm bg-secondary bg-opacity-25 text-white fw-bold" readonly>
+            <div class="form-text" style="font-size: 0.75rem;">Solo se exportarán registros correspondientes a su área asignada.</div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small text-secondary">Desde:</label>
+              <input type="date" id="miPlanillaDesde" class="form-control form-control-sm filtro-input">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-secondary">Hasta:</label>
+              <input type="date" id="miPlanillaHasta" class="form-control form-control-sm filtro-input">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm fw-bold" onclick="exportarExcelMiServicio()">
+            <i class="bi bi-file-earmark-excel"></i> Descargar Excel (.xlsx)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Login Admin -->
   <div class="modal fade" id="modalLogin" tabindex="-1" aria-hidden="true">
@@ -582,6 +615,12 @@ $APP_FECHA   = "22/09/2026";
       </div>
     </div>
   </div>
+
+<!-- Variables inyectadas por sesión de PHP -->
+<script>
+  const SESION_USUARIO = "<?php echo addslashes($USUARIO_LOGUEADO); ?>";
+  const SESION_NOMBRE  = "<?php echo addslashes($NOMBRE_SERVICIO); ?>";
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
