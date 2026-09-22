@@ -153,7 +153,6 @@ function actualizarHorariosSegunServicio() {
     'Cardiologia/Unidad Coronaria', 
     'Parteras', 
     'Laboratorio', 
-    'Anestesista', 
     'Tecnico de Anestesia', 
     'Instrumentadoras',
     'Clinica Medica'
