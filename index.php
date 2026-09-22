@@ -4,7 +4,7 @@ require '../defs/auth.php';
 // ===================================================================
 // CONTROL CENTRAL DE VERSIÓN (EDITAR AQUÍ EN CADA ACTUALIZACIÓN)
 // ===================================================================
-$APP_VERSION = "v2.4.3";
+$APP_VERSION = "v2.4.31";
 $APP_FECHA   = "22/09/2026"; // Podés dejarlo manual o usar date("d/m/Y")
 ?>
 <!DOCTYPE html>
