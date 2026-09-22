@@ -16,6 +16,7 @@ var modalContactoInstance = null;
 var modalJefesInstance = null;
 var modalIncumplidasInstance = null;
 var modalLogsInstance = null;
+var modalMiPlanillaInstance = null;
 
 var guardiaPendienteReporte = null;
 var cargandoDatos = false;
@@ -188,7 +189,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
       : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
 
     html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
-              '<i class="bi bi-whatsapp"></i> ' +
+              '<i class="bi bi-whatsapp"></i> WSP' +
             '</a>';
   }
 
@@ -207,7 +208,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   }).replace(/"/g, '&quot;');
 
   html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
-            '<i class="bi bi-flag-fill"></i>' +
+            '<i class="bi bi-flag-fill"></i> Reportar' +
           '</button>';
 
   html += '</div>';
@@ -339,7 +340,7 @@ function renderizarTablasEnVivo(guardias) {
                  '</div>';
     }
 
-    // Cálculo del tiempo restante
+    // Cálculo del tiempo restante y relevo
     var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
     var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
@@ -420,6 +421,76 @@ function renderizarTablasEnVivo(guardias) {
   }
   if (pasivasCount === 0) {
     tPas.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias pasivas a demanda para la vista seleccionada.</td></tr>';
+  }
+}
+
+// -------------------------------------------------------------
+// AUTOGESTIÓN DE REPORTES POR SERVICIO AUTENTICADO
+// -------------------------------------------------------------
+
+function abrirModalMiPlanilla() {
+  if (!modalMiPlanillaInstance) {
+    modalMiPlanillaInstance = new bootstrap.Modal(document.getElementById('modalMiPlanilla'));
+  }
+  
+  var hoy = new Date();
+  var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
+  var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+  var nombreAMostrar = (typeof SESION_NOMBRE !== 'undefined' && SESION_NOMBRE) ? SESION_NOMBRE : ((typeof SESION_USUARIO !== 'undefined') ? SESION_USUARIO : 'Mi Servicio');
+  document.getElementById('miServicioNombre').value = nombreAMostrar;
+  document.getElementById('miPlanillaDesde').value = primerDia;
+  document.getElementById('miPlanillaHasta').value = ultimoDia;
+
+  modalMiPlanillaInstance.show();
+}
+
+async function exportarExcelMiServicio() {
+  var dDesde = document.getElementById('miPlanillaDesde').value;
+  var dHasta = document.getElementById('miPlanillaHasta').value;
+  var miServicio = (typeof SESION_NOMBRE !== 'undefined' && SESION_NOMBRE) ? SESION_NOMBRE : ((typeof SESION_USUARIO !== 'undefined') ? SESION_USUARIO : '');
+
+  if (!miServicio) {
+    alert("No se pudo detectar el servicio de la sesión activa.");
+    return;
+  }
+
+  try {
+    let query = db.from('guardias').select('*').ilike('servicio', '%' + miServicio + '%');
+    
+    if (dDesde) query = query.gte('fecha_inicio', dDesde);
+    if (dHasta) query = query.lte('fecha_fin', dHasta);
+
+    const { data, error } = await query.order('fecha_inicio', { ascending: true });
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      alert('No se encontraron guardias registradas para ' + miServicio + ' en el rango de fechas seleccionado.');
+      return;
+    }
+
+    var filas = data.map(function(d) {
+      return {
+        "Servicio": d.servicio,
+        "Tipo": d.tipo,
+        "Modalidad": d.modalidad,
+        "Desde": d.fecha_inicio,
+        "Hasta": d.fecha_fin,
+        "Responsable": d.responsable,
+        "Contacto": d.contacto,
+        "Interno": d.interno || '-',
+        "Observaciones": d.observaciones || 'Normal'
+      };
+    });
+
+    var ws = XLSX.utils.json_to_sheet(filas);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mis_Guardias");
+    XLSX.writeFile(wb, "Guardias_" + miServicio.replace(/\s+/g, '_') + "_" + dDesde + "_al_" + dHasta + ".xlsx");
+
+    if (modalMiPlanillaInstance) modalMiPlanillaInstance.hide();
+  } catch(e) {
+    alert("Error al descargar planilla: " + e.message);
   }
 }
 
