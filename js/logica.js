@@ -110,10 +110,10 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var srv = guardia.servicio || '';
 
-  // REGLA TÉCNICO DE IMÁGENES: Lunes a Viernes de 20:00 a 08:00 hs; Fines de semana las 24 hs
+  // REGLA TÉCNICO DE IMÁGENES: Lunes a Viernes de 22:00 a 06:00 hs; Fines de semana las 24 hs
   if (srv === 'Tecnico de Imagenes') {
     if (esFinde) return true;
-    return horaAhora >= 20 || horaAhora < 8;
+    return horaAhora >= 22 || horaAhora < 6;
   }
 
   // REGLA RX QUIRÓFANO: Lunes a Viernes pasiva nocturna (20:00 a 08:00 hs); Fines de semana las 24 hs
@@ -146,6 +146,6 @@ function esGuardiaVigente(guardia, fechaReferencia) {
     return horaAhora >= 16;
   }
 
-  // Resto de servicios pasivos continuos (Gastroenterologia, Ginecologia, Obstetricia, Mantenimiento, etc.):
+  // Resto de servicios pasivos continuos:
   return true;
 }
