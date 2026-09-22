@@ -337,10 +337,10 @@ require '../defs/auth.php';
   </div>
 
   <footer class="text-center text-secondary py-3 my-4 border-top border-secondary small">
-    <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.4.2</strong></span>
-    <span class="mx-2">•</span>
-    <span>Última versión: <strong id="lblFechaUpdate">08/09/2026</strong></span>
-  </footer>
+  <span>HIRS Monitor de Guardias • <strong id="lblVersion">v2.4.2</strong></span>
+  <span class="mx-2">•</span>
+  <span>Última versión: <strong id="lblFechaUpdate"><?php echo date("d/m/Y", filemtime(__FILE__)); ?></strong></span>
+</footer>
 
   <!-- Modal Login Admin -->
   <div class="modal fade" id="modalLogin" tabindex="-1" aria-hidden="true">
