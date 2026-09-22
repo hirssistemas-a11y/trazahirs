@@ -407,7 +407,10 @@ function renderizarTablasEnVivo(guardias) {
       '<td class="align-middle">' + btns + '</td>' +
     '</tr>' + filaCollapseHtml;
 
-    if (g.tipo === 'Activa') {
+    // Forzado a pasiva si es Anestesia aunque en la base figure como Activa
+    var esAnestesia = g.servicio === 'Anestesista' || g.servicio === 'Tecnico de Anestesia';
+
+    if (g.tipo === 'Activa' && !esAnestesia) {
       tAct.innerHTML += row;
       activasCount++;
     } else {
