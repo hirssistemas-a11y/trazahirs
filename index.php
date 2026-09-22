@@ -6,7 +6,7 @@ $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
-$APP_VERSION = "v2.4.34";
+$APP_VERSION = "v2.4.35";
 $APP_FECHA   = "22/09/2026";
 ?>
 <!DOCTYPE html>
@@ -232,6 +232,11 @@ $APP_FECHA   = "22/09/2026";
       <button class="btn btn-admin btn-sm" onclick="abrirModalLogin()" id="btnAuth">
         <i class="bi bi-shield-lock"></i> <span class="d-none d-sm-inline">Administrador</span>
       </button>
+
+      <!-- Botón Cerrar Sesión General -->
+      <a href="logout.php" class="btn btn-outline-danger btn-sm" title="Cerrar Sesión de Traza HIRS">
+        <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Salir</span>
+      </a>
     </div>
   </div>
 
@@ -301,7 +306,7 @@ $APP_FECHA   = "22/09/2026";
   <div id="seccionAdmin" style="display: none;" class="card panel-card p-4 mb-4 border-info">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <h4 class="text-warning mb-0 fs-5"><i class="bi bi-shield-check"></i> Panel de Control y Auditoria</h4>
-      <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesionAdmin()">Cerrar Sesion</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesionAdmin()">Cerrar Sesion Admin</button>
     </div>
 
     <!-- Alertas de Descubiertos -->
