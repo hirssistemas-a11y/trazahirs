@@ -1,11 +1,13 @@
 <?php
 require '../defs/auth.php';
 
-// ===================================================================
-// CONTROL CENTRAL DE VERSIÓN (EDITAR AQUÍ EN CADA ACTUALIZACIÓN)
-// ===================================================================
-$APP_VERSION = "v2.4.33";
-$APP_FECHA   = "22/09/2026"; // Podés dejarlo manual o usar date("d/m/Y")
+// Captura de datos de sesión autenticados por auth.php
+$USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
+$NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
+
+// Control central de versión
+$APP_VERSION = "v2.4.34";
+$APP_FECHA   = "22/09/2026";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -179,6 +181,44 @@ $APP_FECHA   = "22/09/2026"; // Podés dejarlo manual o usar date("d/m/Y")
     </div>
     
     <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+      <!-- Desplegable Ayuda / Reportes -->
+      <div class="dropdown">
+        <button class="btn btn-outline-info btn-sm fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-question-circle"></i> <span class="d-none d-sm-inline">Ayuda</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark bg-dark border-secondary shadow">
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="#" onclick="abrirModalMiPlanilla()">
+              <i class="bi bi-file-earmark-spreadsheet text-info fs-5"></i>
+              <div>
+                <div class="fw-bold">Descargar mi Planilla</div>
+                <small class="text-secondary" style="font-size: 0.75rem;">Exportar Excel del mes de mi servicio</small>
+              </div>
+            </a>
+          </li>
+          <li><hr class="dropdown-divider border-secondary"></li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="https://wa.me/5492914617969?text=Hola!%20Te%20contacto%20desde%20el%20Panel%20de%20Guardias%20del%20Hospital%20Italiano%20para%20solicitarte%20la%20planilla%20Excel%20de%20mi%20servicio." target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-file-earmark-excel text-success fs-5"></i>
+              <div>
+                <div class="fw-bold">Pedir Excel</div>
+                <small class="text-secondary" style="font-size: 0.75rem;">Solicitar reporte mensual por WhatsApp</small>
+              </div>
+            </a>
+          </li>
+          <li><hr class="dropdown-divider border-secondary"></li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="https://wa.me/5492914617969?text=Hola!%20Necesito%20asistencia%20o%20soporte%20con%20el%20Panel%20de%20Guardias%20del%20Hospital%20Italiano." target="_blank" rel="noopener noreferrer">
+              <i class="bi bi-chat-dots text-warning fs-5"></i>
+              <div>
+                <div class="fw-bold">Otro motivo / Soporte</div>
+                <small class="text-secondary" style="font-size: 0.75rem;">Consultas técnicas o incidencias</small>
+              </div>
+            </a>
+          </li>
+        </ul>
+      </div>
+
       <a href="cargar.php" class="btn btn-primary btn-sm fw-bold">
         <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Cargar Guardia</span>
       </a>
@@ -347,6 +387,43 @@ $APP_FECHA   = "22/09/2026"; // Podés dejarlo manual o usar date("d/m/Y")
     <span class="mx-2">•</span>
     <span>Última versión: <strong id="lblFechaUpdate"><?php echo $APP_FECHA; ?></strong></span>
   </footer>
+
+  <!-- Modal Descargar Mi Planilla (Filtrado estricto por Servicio Autenticado) -->
+  <div class="modal fade" id="modalMiPlanilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark border-secondary text-white">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fs-6 text-info">
+            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Descargar Planilla de mi Servicio
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Servicio autenticado:</label>
+            <input type="text" id="miServicioNombre" class="form-control form-control-sm bg-secondary bg-opacity-25 text-white fw-bold" readonly>
+            <div class="form-text" style="font-size: 0.75rem;">Solo se exportarán registros correspondientes a su área asignada.</div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small text-secondary">Desde:</label>
+              <input type="date" id="miPlanillaDesde" class="form-control form-control-sm filtro-input">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-secondary">Hasta:</label>
+              <input type="date" id="miPlanillaHasta" class="form-control form-control-sm filtro-input">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm fw-bold" onclick="exportarExcelMiServicio()">
+            <i class="bi bi-file-earmark-excel"></i> Descargar Excel (.xlsx)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Login Admin -->
   <div class="modal fade" id="modalLogin" tabindex="-1" aria-hidden="true">
@@ -558,6 +635,12 @@ $APP_FECHA   = "22/09/2026"; // Podés dejarlo manual o usar date("d/m/Y")
       </div>
     </div>
   </div>
+
+<!-- Variables inyectadas por sesión de PHP -->
+<script>
+  const SESION_USUARIO = "<?php echo addslashes($USUARIO_LOGUEADO); ?>";
+  const SESION_NOMBRE  = "<?php echo addslashes($NOMBRE_SERVICIO); ?>";
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
