@@ -6,7 +6,7 @@ $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
-$APP_VERSION = "v2.4.37";
+$APP_VERSION = "v2.4.38";
 $APP_FECHA   = "22/09/2026";
 ?>
 <!DOCTYPE html>
@@ -209,7 +209,7 @@ $APP_FECHA   = "22/09/2026";
       </button>
 
       <!-- Botón Cerrar Sesión General -->
-      <a href="https://trazahirs.com/session/login.php?redirect_to=%2Fguardias%2F" class="btn btn-outline-danger btn-sm" title="Cerrar Sesión de Traza HIRS">
+      <a href="logout.php" class="btn btn-outline-danger btn-sm" title="Cerrar Sesión de Traza HIRS">
         <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Salir</span>
       </a>
     </div>
