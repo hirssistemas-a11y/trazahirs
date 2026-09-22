@@ -149,3 +149,78 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   // Resto de servicios pasivos continuos:
   return true;
 }
+
+// -------------------------------------------------------------
+// 3. CÁLCULO DE VENCIMIENTO Y FORMATEO DE TIEMPO RESTANTE
+// -------------------------------------------------------------
+
+function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
+  var ahora = fechaReferencia || new Date();
+  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
+  var fFinStr = String(guardia.fechaFin || guardia.fechaInicio || '').slice(0, 10);
+  if (!fFinStr) return null;
+
+  var pFin = fFinStr.split('-');
+  var yFin = parseInt(pFin[0], 10), mFin = parseInt(pFin[1], 10) - 1, dFin = parseInt(pFin[2], 10);
+
+  var yHoy = ahora.getFullYear(), mHoy = ahora.getMonth(), dHoy = ahora.getDate();
+  var horaAhora = ahora.getHours();
+  var mod = guardia.modalidad || '';
+
+  // Guardias Activas
+  if (guardia.tipo === 'Activa') {
+    if (mod.indexOf('24 hs') !== -1 || mod.indexOf('08:00-08:00') !== -1) {
+      var fin24 = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      fin24.setDate(fin24.getDate() + 1);
+      return fin24;
+    }
+    if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
+      return new Date(yHoy, mHoy, dHoy, 20, 0, 0, 0);
+    }
+    if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
+      var finNoc = new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
+      if (horaAhora >= 20) finNoc.setDate(finNoc.getDate() + 1);
+      return finNoc;
+    }
+    if (mod.indexOf('08:00-14:00') !== -1) return new Date(yHoy, mHoy, dHoy, 14, 0, 0, 0);
+    if (mod.indexOf('14:00-20:00') !== -1) return new Date(yHoy, mHoy, dHoy, 20, 0, 0, 0);
+    if (mod.indexOf('20:00-02:00') !== -1) {
+      var f02 = new Date(yHoy, mHoy, dHoy, 2, 0, 0, 0);
+      if (horaAhora >= 20) f02.setDate(f02.getDate() + 1);
+      return f02;
+    }
+    if (mod.indexOf('02:00-08:00') !== -1) return new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
+  }
+
+  // Pasivas con cierre nocturno específico
+  if (guardia.servicio === 'Tecnico de Imagenes') {
+    var f06 = new Date(yHoy, mHoy, dHoy, 6, 0, 0, 0);
+    if (horaAhora >= 22) f06.setDate(f06.getDate() + 1);
+    return f06;
+  }
+  if (guardia.servicio === 'RX Quirofano') {
+    var f08 = new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
+    if (horaAhora >= 20) f08.setDate(f08.getDate() + 1);
+    return f08;
+  }
+
+  // Fallback 24 hs
+  var finStd = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+  finStd.setDate(finStd.getDate() + 1);
+  return finStd;
+}
+
+function formatearTiempoRestante(ms) {
+  if (ms <= 0) return 'Cambiando ahora';
+  var totalMin = Math.floor(ms / (1000 * 60));
+  var dias = Math.floor(totalMin / (60 * 24));
+  var horas = Math.floor((totalMin % (60 * 24)) / 60);
+  var minutos = totalMin % 60;
+
+  var partes = [];
+  if (dias > 0) partes.push(dias + 'd');
+  if (horas > 0 || dias > 0) partes.push(horas + 'h');
+  partes.push(minutos + 'm');
+
+  return partes.join(' ');
+}
