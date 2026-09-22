@@ -339,40 +339,60 @@ function renderizarTablasEnVivo(guardias) {
                  '</div>';
     }
 
-    // Cálculo del tiempo restante y relevo
+    // Cálculo del tiempo restante
     var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
     var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
 
-    var prox = buscarProximaGuardia(g.servicio, g.id, g.fechaFin);
-    var contenidoDesplegable = '';
-    var btnClaseAlerta = 'btn-outline-secondary';
+    // Regla de 48 horas: Solo mostrar si faltan <= 48 hs para que finalice la guardia
+    var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
+    var mostrarDesplegable = (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS);
 
-    if (prox) {
-      contenidoDesplegable = 
-        '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-          '<div><i class="bi bi-hourglass-split text-info me-1"></i> <strong>Cambio de guardia en:</strong> <span class="badge bg-primary text-white fs-6 py-1 px-2">' + tiempoRestanteTxt + '</span></div>' +
-          '<div><i class="bi bi-person-fill-up text-success me-1"></i> <strong>Sigue:</strong> ' +
-            '<strong class="text-white">' + prox.responsable + '</strong> ' +
-            '<span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span>' +
-            (prox.contacto ? ' • <i class="bi bi-telephone-fill text-info"></i> ' + prox.contacto : '') +
-            (prox.interno ? ' • <span class="badge bg-secondary">Int. ' + prox.interno + '</span>' : '') +
-          '</div>' +
-        '</div>';
-    } else {
-      btnClaseAlerta = 'btn-outline-danger';
-      contenidoDesplegable = 
-        '<div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 py-1">' +
-          '<i class="bi bi-exclamation-triangle-fill fs-5"></i> ' +
-          '<span>¡Alerta! No hay responsable de guardia dentro de: <u class="text-warning">' + tiempoRestanteTxt + '</u></span>' +
-        '</div>';
+    var btnDesplegable = '';
+    var filaCollapseHtml = '';
+
+    if (mostrarDesplegable) {
+      var prox = buscarProximaGuardia(g.servicio, g.id, g.fechaFin);
+      var contenidoDesplegable = '';
+      var btnClaseAlerta = 'btn-outline-secondary';
+
+      if (prox) {
+        contenidoDesplegable = 
+          '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+            '<div><i class="bi bi-hourglass-split text-info me-1"></i> <strong>Cambio de guardia en:</strong> <span class="badge bg-primary text-white fs-6 py-1 px-2">' + tiempoRestanteTxt + '</span></div>' +
+            '<div><i class="bi bi-person-fill-up text-success me-1"></i> <strong>Sigue:</strong> ' +
+              '<strong class="text-white">' + prox.responsable + '</strong> ' +
+              '<span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span>' +
+              (prox.contacto ? ' • <i class="bi bi-telephone-fill text-info"></i> ' + prox.contacto : '') +
+              (prox.interno ? ' • <span class="badge bg-secondary">Int. ' + prox.interno + '</span>' : '') +
+            '</div>' +
+          '</div>';
+      } else {
+        btnClaseAlerta = 'btn-outline-danger';
+        contenidoDesplegable = 
+          '<div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 py-1">' +
+            '<i class="bi bi-exclamation-triangle-fill fs-5"></i> ' +
+            '<span>¡Alerta! No hay responsable de guardia dentro de: <u class="text-warning">' + tiempoRestanteTxt + '</u></span>' +
+          '</div>';
+      }
+
+      var collapseId = 'collapseProx_' + (g.id || index);
+
+      btnDesplegable = '<button class="btn btn-sm ' + btnClaseAlerta + ' py-0 px-2 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" title="Ver información del próximo turno">' +
+                         '<i class="bi bi-clock-history me-1"></i> <small class="fw-bold">' + tiempoRestanteTxt + '</small> <i class="bi bi-chevron-down small"></i>' +
+                       '</button>';
+
+      filaCollapseHtml = 
+        '<tr class="p-0 border-0">' +
+          '<td colspan="3" class="p-0 border-0">' +
+            '<div class="collapse" id="' + collapseId + '">' +
+              '<div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + (prox ? 'border-secondary' : 'border-danger') + ' border-opacity-75 small">' +
+                contenidoDesplegable +
+              '</div>' +
+            '</div>' +
+          '</td>' +
+        '</tr>';
     }
-
-    var collapseId = 'collapseProx_' + (g.id || index);
-
-    var btnDesplegable = '<button class="btn btn-sm ' + btnClaseAlerta + ' py-0 px-2 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" title="Ver información del próximo turno">' +
-                           '<i class="bi bi-clock-history me-1"></i> <small class="fw-bold">' + tiempoRestanteTxt + '</small> <i class="bi bi-chevron-down small"></i>' +
-                         '</button>';
 
     var row = '<tr>' +
       '<td>' +
@@ -384,16 +404,7 @@ function renderizarTablasEnVivo(guardias) {
       '</td>' +
       '<td class="align-middle">' + g.responsable + '</td>' +
       '<td class="align-middle">' + btns + '</td>' +
-    '</tr>' +
-    '<tr class="p-0 border-0">' +
-      '<td colspan="3" class="p-0 border-0">' +
-        '<div class="collapse" id="' + collapseId + '">' +
-          '<div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + (prox ? 'border-secondary' : 'border-danger') + ' border-opacity-75 small">' +
-            contenidoDesplegable +
-          '</div>' +
-        '</div>' +
-      '</td>' +
-    '</tr>';
+    '</tr>' + filaCollapseHtml;
 
     if (g.tipo === 'Activa') {
       tAct.innerHTML += row;
