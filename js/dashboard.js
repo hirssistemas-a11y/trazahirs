@@ -377,20 +377,35 @@ function renderizarTablasEnVivo(guardias) {
       var prox = buscarProximaGuardia(g.servicio, g.id, fechaFinTurno);
       var contenidoDesplegable = '';
       var btnClaseAlerta = 'btn-outline-secondary';
+      var borderClaseCollapse = 'border-secondary';
 
       if (prox) {
+        var obsProx = (prox.observaciones || '').toString().toLowerCase();
+        var badgeObsProx = '';
+
+        if (obsProx.includes('rojo')) {
+          btnClaseAlerta = 'btn-outline-danger';
+          borderClaseCollapse = 'border-danger';
+          badgeObsProx = ' <span class="badge bg-danger ms-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>CÓDIGO ROJO</span>';
+        } else if (obsProx.includes('restringida')) {
+          btnClaseAlerta = 'btn-outline-warning';
+          borderClaseCollapse = 'border-warning';
+          badgeObsProx = ' <span class="badge bg-warning text-dark ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>RESTRINGIDA</span>';
+        }
+
         contenidoDesplegable = 
           '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
             '<div><i class="bi bi-hourglass-split text-info me-1"></i> <strong>Cambio de guardia en:</strong> <span class="badge bg-primary text-white fs-6 py-1 px-2">' + tiempoRestanteTxt + '</span></div>' +
             '<div><i class="bi bi-person-fill-up text-success me-1"></i> <strong>Sigue:</strong> ' +
-              '<strong class="text-white">' + prox.responsable + '</strong> ' +
-              '<span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span>' +
+              '<strong class="text-white">' + prox.responsable + '</strong>' + badgeObsProx +
+              ' <span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span>' +
               (prox.contacto ? ' • <i class="bi bi-telephone-fill text-info"></i> ' + prox.contacto : '') +
               (prox.interno ? ' • <span class="badge bg-secondary">Int. ' + prox.interno + '</span>' : '') +
             '</div>' +
           '</div>';
       } else {
         btnClaseAlerta = 'btn-outline-danger';
+        borderClaseCollapse = 'border-danger';
         contenidoDesplegable = 
           '<div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 py-1">' +
             '<i class="bi bi-exclamation-triangle-fill fs-5"></i> ' +
@@ -408,7 +423,7 @@ function renderizarTablasEnVivo(guardias) {
         '<tr class="p-0 border-0">' +
           '<td colspan="3" class="p-0 border-0">' +
             '<div class="collapse" id="' + collapseId + '">' +
-              '<div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + (prox ? 'border-secondary' : 'border-danger') + ' border-opacity-75 small">' +
+              '<div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + borderClaseCollapse + ' border-opacity-75 small">' +
                 contenidoDesplegable +
               '</div>' +
             '</div>' +
