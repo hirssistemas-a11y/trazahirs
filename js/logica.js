@@ -192,6 +192,30 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
     if (mod.indexOf('02:00-08:00') !== -1) return new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
   }
 
+  // Obtiene el objeto Date exacto en que inicia una guardia según su modalidad
+function obtenerInicioTurnoGuardia(guardia) {
+  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
+  if (!fIniStr) return null;
+
+  var pIni = fIniStr.split('-');
+  var yIni = parseInt(pIni[0], 10), mIni = parseInt(pIni[1], 10) - 1, dIni = parseInt(pIni[2], 10);
+  var mod = guardia.modalidad || '';
+
+  var horaInicio = 8; // Predeterminado 08:00 AM
+
+  if (mod.indexOf('20:00') !== -1 && (mod.indexOf('Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1 || mod.indexOf('20:00-02:00') !== -1)) {
+    horaInicio = 20;
+  } else if (mod.indexOf('14:00-20:00') !== -1) {
+    horaInicio = 14;
+  } else if (mod.indexOf('02:00-08:00') !== -1) {
+    horaInicio = 2;
+  } else if (guardia.servicio === 'Tecnico de Imagenes') {
+    horaInicio = 22;
+  }
+
+  return new Date(yIni, mIni, dIni, horaInicio, 0, 0, 0);
+}
+
   // Pasivas con cierre nocturno específico
   if (guardia.servicio === 'Tecnico de Imagenes') {
     var f06 = new Date(yHoy, mHoy, dHoy, 6, 0, 0, 0);
