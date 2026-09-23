@@ -374,7 +374,7 @@ function renderizarTablasEnVivo(guardias) {
     var filaCollapseHtml = '';
 
     if (mostrarDesplegable) {
-      var prox = buscarProximaGuardia(g.servicio, g.id, g.fechaFin);
+      var prox = buscarProximaGuardia(g.servicio, g.id, fechaFinTurno);
       var contenidoDesplegable = '';
       var btnClaseAlerta = 'btn-outline-secondary';
 
