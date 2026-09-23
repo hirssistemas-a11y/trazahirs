@@ -146,13 +146,36 @@ function esGuardiaVigente(guardia, fechaReferencia) {
     return horaAhora >= 16;
   }
 
-  // Resto de servicios pasivos continuos:
+  // Resto de servicios pasivos continuos
   return true;
 }
 
 // -------------------------------------------------------------
-// 3. CÁLCULO DE VENCIMIENTO Y FORMATEO DE TIEMPO RESTANTE
+// 3. CÁLCULO DE HORARIOS EXACTOS (INICIO Y FIN)
 // -------------------------------------------------------------
+
+function obtenerInicioTurnoGuardia(guardia) {
+  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
+  if (!fIniStr) return null;
+
+  var pIni = fIniStr.split('-');
+  var yIni = parseInt(pIni[0], 10), mIni = parseInt(pIni[1], 10) - 1, dIni = parseInt(pIni[2], 10);
+  var mod = guardia.modalidad || '';
+
+  var horaInicio = 8; // Predeterminado 08:00 AM
+
+  if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1 || mod.indexOf('20:00-02:00') !== -1) {
+    horaInicio = 20;
+  } else if (mod.indexOf('14:00-20:00') !== -1) {
+    horaInicio = 14;
+  } else if (mod.indexOf('02:00-08:00') !== -1) {
+    horaInicio = 2;
+  } else if (guardia.servicio === 'Tecnico de Imagenes') {
+    horaInicio = 22;
+  }
+
+  return new Date(yIni, mIni, dIni, horaInicio, 0, 0, 0);
+}
 
 function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
   var ahora = fechaReferencia || new Date();
@@ -192,31 +215,7 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
     if (mod.indexOf('02:00-08:00') !== -1) return new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
   }
 
-  // Obtiene el objeto Date exacto en que inicia una guardia según su modalidad
-function obtenerInicioTurnoGuardia(guardia) {
-  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
-  if (!fIniStr) return null;
-
-  var pIni = fIniStr.split('-');
-  var yIni = parseInt(pIni[0], 10), mIni = parseInt(pIni[1], 10) - 1, dIni = parseInt(pIni[2], 10);
-  var mod = guardia.modalidad || '';
-
-  var horaInicio = 8; // Predeterminado 08:00 AM
-
-  if (mod.indexOf('20:00') !== -1 && (mod.indexOf('Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1 || mod.indexOf('20:00-02:00') !== -1)) {
-    horaInicio = 20;
-  } else if (mod.indexOf('14:00-20:00') !== -1) {
-    horaInicio = 14;
-  } else if (mod.indexOf('02:00-08:00') !== -1) {
-    horaInicio = 2;
-  } else if (guardia.servicio === 'Tecnico de Imagenes') {
-    horaInicio = 22;
-  }
-
-  return new Date(yIni, mIni, dIni, horaInicio, 0, 0, 0);
-}
-
-  // Pasivas con cierre nocturno específico
+  // Pasivas con horario nocturno específico
   if (guardia.servicio === 'Tecnico de Imagenes') {
     var f06 = new Date(yHoy, mHoy, dHoy, 6, 0, 0, 0);
     if (horaAhora >= 22) f06.setDate(f06.getDate() + 1);
@@ -228,7 +227,7 @@ function obtenerInicioTurnoGuardia(guardia) {
     return f08;
   }
 
-  // Fallback 24 hs
+  // Fallback estándar 24 hs
   var finStd = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
   finStd.setDate(finStd.getDate() + 1);
   return finStd;
