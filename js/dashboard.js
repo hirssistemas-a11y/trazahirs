@@ -147,11 +147,11 @@ async function cargarReferentesDesdeBD() {
   }
 }
 
+// Búsqueda cronológica rigurosa de la próxima guardia
 function buscarProximaGuardia(servicioActual, idActual, fechaFinTurnoActual) {
   var ahoraTimestamp = new Date().getTime();
-  var referenciaTimestamp = fechaFinTurnoActual ? fechaFinTurnoActual.getTime() : ahoraTimestamp;
+  var umbralTimestamp = ahoraTimestamp;
 
-  // Filtrar solo las guardias del mismo servicio y distinto ID
   var candidatas = todasLasGuardiasRaw.filter(function(g) {
     if (g.servicio !== servicioActual || g.id === idActual) return false;
 
@@ -165,13 +165,11 @@ function buscarProximaGuardia(servicioActual, idActual, fechaFinTurnoActual) {
       inicioTurno = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), 8, 0, 0, 0);
     }
 
-    // Debe comenzar exactamente cuando termina la actual o después (con margen de 5 min)
-    return inicioTurno.getTime() >= (referenciaTimestamp - 5 * 60 * 1000);
+    return inicioTurno.getTime() >= (umbralTimestamp - 5 * 60 * 1000);
   });
 
   if (candidatas.length === 0) return null;
 
-  // Ordenar para tomar la más próxima en el tiempo
   candidatas.sort(function(a, b) {
     var iniA = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(a) : new Date(a.fechaInicio);
     var iniB = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(b) : new Date(b.fechaInicio);
@@ -210,7 +208,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
       : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
 
     html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
-              '<i class="bi bi-whatsapp"></i>' +
+              '<i class="bi bi-whatsapp"></i> WSP' +
             '</a>';
   }
 
@@ -229,7 +227,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   }).replace(/"/g, '&quot;');
 
   html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
-            '<i class="bi bi-flag-fill"></i>' +
+            '<i class="bi bi-flag-fill"></i> Reportar' +
           '</button>';
 
   html += '</div>';
@@ -347,7 +345,7 @@ function renderizarTablasEnVivo(guardias) {
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
 
-    // Badge de Observaciones (Guardia Restringida / Código Rojo)
+    // Badge de Observaciones de la guardia actual
     var badgeObs = '';
     var obsTexto = (g.observaciones || '').toString().trim();
     if (obsTexto && obsTexto !== 'Normal Activa' && obsTexto !== 'null' && obsTexto !== 'undefined') {
@@ -366,7 +364,7 @@ function renderizarTablasEnVivo(guardias) {
     var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
 
-    // Regla de 48 horas
+    // Regla de 48 horas: Solo mostrar si faltan <= 48 hs para finalizar
     var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
     var mostrarDesplegable = (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS);
 
@@ -443,10 +441,7 @@ function renderizarTablasEnVivo(guardias) {
       '<td class="align-middle">' + btns + '</td>' +
     '</tr>' + filaCollapseHtml;
 
-    // Forzado a pasiva si es Anestesia aunque en la base figure como Activa
-    var esAnestesia = g.servicio === 'Anestesista' || g.servicio === 'Tecnico de Anestesia';
-
-    if (g.tipo === 'Activa' && !esAnestesia) {
+    if (g.tipo === 'Activa') {
       tAct.innerHTML += row;
       activasCount++;
     } else {
@@ -600,6 +595,13 @@ function validarPin() {
 function activarModoAdmin() {
   document.getElementById('seccionAdmin').style.display = 'block';
   document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-check text-success"></i> Admin Activo';
+
+  // Anulación del autocompletado del navegador
+  var inputBusqueda = document.getElementById('filtroNombre');
+  if (inputBusqueda) {
+    inputBusqueda.value = '';
+  }
+
   cargarHistorial();
   cargarAlertas();
   document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
