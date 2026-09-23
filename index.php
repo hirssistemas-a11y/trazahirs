@@ -7,7 +7,7 @@ $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
 $APP_VERSION = "v2.4.40";
-$APP_FECHA   = "22/09/2026";
+$APP_FECHA   = "23/09/2026";
 ?>
 <!DOCTYPE html>
 <html lang="es">
