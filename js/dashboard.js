@@ -147,17 +147,38 @@ async function cargarReferentesDesdeBD() {
   }
 }
 
-function buscarProximaGuardia(servicioActual, idActual, fechaFinActual) {
-  var candidatas = todasLasGuardiasRaw.filter(function(g) {
-    return g.servicio === servicioActual && g.id !== idActual && g.fechaInicio >= (fechaFinActual || '');
-  });
-  if (candidatas.length > 0) return candidatas[0];
+function buscarProximaGuardia(servicioActual, idActual, fechaFinTurnoActual) {
+  var ahoraTimestamp = new Date().getTime();
+  var referenciaTimestamp = fechaFinTurnoActual ? fechaFinTurnoActual.getTime() : ahoraTimestamp;
 
-  var hoyIso = formatearFechaLocalISO(new Date());
-  var proximas = todasLasGuardiasRaw.filter(function(g) {
-    return g.servicio === servicioActual && g.id !== idActual && g.fechaInicio >= hoyIso;
+  // Filtrar solo las guardias del mismo servicio y distinto ID
+  var candidatas = todasLasGuardiasRaw.filter(function(g) {
+    if (g.servicio !== servicioActual || g.id === idActual) return false;
+
+    var inicioTurno = typeof obtenerInicioTurnoGuardia === 'function' 
+      ? obtenerInicioTurnoGuardia(g) 
+      : null;
+
+    if (!inicioTurno) {
+      var fIniStr = String(g.fechaInicio || '').slice(0, 10);
+      var p = fIniStr.split('-');
+      inicioTurno = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), 8, 0, 0, 0);
+    }
+
+    // Debe comenzar exactamente cuando termina la actual o después (con margen de 5 min)
+    return inicioTurno.getTime() >= (referenciaTimestamp - 5 * 60 * 1000);
   });
-  return proximas.length > 0 ? proximas[0] : null;
+
+  if (candidatas.length === 0) return null;
+
+  // Ordenar para tomar la más próxima en el tiempo
+  candidatas.sort(function(a, b) {
+    var iniA = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(a) : new Date(a.fechaInicio);
+    var iniB = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(b) : new Date(b.fechaInicio);
+    return iniA.getTime() - iniB.getTime();
+  });
+
+  return candidatas[0];
 }
 
 function normalizarWhatsApp(tel) {
