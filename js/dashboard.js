@@ -148,7 +148,6 @@ async function cargarReferentesDesdeBD() {
   }
 }
 
-// Búsqueda cronológica rigurosa de la próxima guardia
 function buscarProximaGuardia(servicioActual, idActual, fechaFinTurnoActual) {
   var ahoraTimestamp = new Date().getTime();
   var umbralTimestamp = ahoraTimestamp;
@@ -234,10 +233,6 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   html += '</div>';
   return html;
 }
-
-// -------------------------------------------------------------
-// FLUJO: REPORTAR INCIDENTE DE GUARDIA
-// -------------------------------------------------------------
 
 function actualizarContadorChar(textarea) {
   var len = textarea.value.length;
@@ -346,7 +341,6 @@ function renderizarTablasEnVivo(guardias) {
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
 
-    // Badge de Observaciones de la guardia actual
     var badgeObs = '';
     var obsTexto = (g.observaciones || '').toString().trim();
     if (obsTexto && obsTexto !== 'Normal Activa' && obsTexto !== 'null' && obsTexto !== 'undefined') {
@@ -360,12 +354,10 @@ function renderizarTablasEnVivo(guardias) {
                  '</div>';
     }
 
-    // Cálculo del tiempo restante
     var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
     var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
 
-    // Regla de 48 horas: Solo mostrar si faltan <= 48 hs para finalizar
     var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
     var mostrarDesplegable = (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS);
 
@@ -459,15 +451,10 @@ function renderizarTablasEnVivo(guardias) {
   }
 }
 
-// -------------------------------------------------------------
-// AUTOGESTIÓN DE REPORTES POR SERVICIO AUTENTICADO
-// -------------------------------------------------------------
-
 function obtenerServiciosSegunUsuario() {
   var user = (typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '').toLowerCase().trim();
   var nom = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '').trim();
 
-  // 1. Mapeo específico para Guardia (Adultos)
   if (user === 'guardia' || nom.toLowerCase() === 'guardia') {
     return {
       etiqueta: 'Guardia Externa Adultos',
@@ -475,7 +462,6 @@ function obtenerServiciosSegunUsuario() {
     };
   }
 
-  // 2. Mapeo específico para Pediatría (Pediatría + Neonatología)
   if (user === 'pediatria' || nom.toLowerCase() === 'pediatria') {
     return {
       etiqueta: 'Pediatría y Neonatología',
@@ -483,7 +469,6 @@ function obtenerServiciosSegunUsuario() {
     };
   }
 
-  // 3. Resto de usuarios estándar
   var nombreFinal = nom || user || 'Mi Servicio';
   return {
     etiqueta: nombreFinal,
@@ -565,10 +550,6 @@ async function exportarExcelMiServicio() {
   }
 }
 
-// -------------------------------------------------------------
-// PANEL ADMINISTRADOR
-// -------------------------------------------------------------
-
 function abrirModalLogin() {
   if (tokenAdmin) {
     document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
@@ -597,7 +578,6 @@ function activarModoAdmin() {
   document.getElementById('seccionAdmin').style.display = 'block';
   document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-check text-success"></i> Admin Activo';
 
-  // Anulación del autocompletado del navegador
   var inputBusqueda = document.getElementById('filtroNombre');
   if (inputBusqueda) {
     inputBusqueda.value = '';
@@ -614,10 +594,6 @@ function cerrarSesionAdmin() {
   document.getElementById('seccionAdmin').style.display = 'none';
   document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-lock"></i> Administrador';
 }
-
-// -------------------------------------------------------------
-// AUDITORÍA HORARIA DE DESCUBIERTOS (TODOS LOS SERVICIOS)
-// -------------------------------------------------------------
 
 function obtenerTodosLosServicios() {
   var servicios = [];
@@ -637,14 +613,20 @@ async function cargarAlertas() {
   if (!tokenAdmin || !db) return;
   try {
     var ahora = new Date();
-    var limite48hs = new Date(ahora.getTime() + 48 * 60 * 60 * 1000);
-    var hoyStr = formatearFechaLocalISO(ahora);
 
-    // Traemos guardias que tengan fecha de fin desde hoy en adelante
+    var inicioAuditoria = new Date(ahora);
+    if (ahora.getHours() < 8) {
+      inicioAuditoria.setDate(inicioAuditoria.getDate() - 1);
+    }
+    inicioAuditoria.setHours(8, 0, 0, 0);
+
+    var finAuditoria = new Date(inicioAuditoria.getTime() + 48 * 60 * 60 * 1000);
+
+    var fAyerStr = formatearFechaLocalISO(inicioAuditoria);
     var { data, error } = await db
       .from('guardias')
       .select('*')
-      .gte('fecha_fin', hoyStr);
+      .gte('fecha_fin', fAyerStr);
 
     if (error) throw error;
 
@@ -666,18 +648,19 @@ async function cargarAlertas() {
     var todosLosServicios = obtenerTodosLosServicios();
     huecosDetectadosGlobal = [];
 
-    // Inspección en pasos de 1 hora a lo largo de las próximas 48 hs
+    var PASO_MINUTOS = 30;
+    var PASO_MS = PASO_MINUTOS * 60 * 1000;
+
     todosLosServicios.forEach(function(srv) {
       var huecoActual = null;
-      var cursor = new Date(ahora);
-      cursor.setMinutes(0, 0, 0);
+      var cursor = new Date(inicioAuditoria);
 
-      while (cursor < limite48hs) {
-        var horaEval = new Date(cursor.getTime() + 30 * 60 * 1000); // Mitad de la hora
-        
+      while (cursor < finAuditoria) {
+        var tiempoMedio = new Date(cursor.getTime() + (PASO_MS / 2));
+
         var cubierto = filas.some(function(g) {
           if (g.servicio !== srv) return false;
-          return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, horaEval) : true;
+          return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, tiempoMedio) : true;
         });
 
         if (!cubierto) {
@@ -685,10 +668,10 @@ async function cargarAlertas() {
             huecoActual = {
               servicio: srv,
               inicio: new Date(cursor),
-              fin: new Date(cursor.getTime() + 60 * 60 * 1000)
+              fin: new Date(cursor.getTime() + PASO_MS)
             };
           } else {
-            huecoActual.fin = new Date(cursor.getTime() + 60 * 60 * 1000);
+            huecoActual.fin = new Date(cursor.getTime() + PASO_MS);
           }
         } else {
           if (huecoActual) {
@@ -697,7 +680,7 @@ async function cargarAlertas() {
           }
         }
 
-        cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
+        cursor = new Date(cursor.getTime() + PASO_MS);
       }
 
       if (huecoActual) {
@@ -943,10 +926,6 @@ function exportarExcelFiltrado() {
   XLSX.writeFile(wb, "Reporte_Guardias_HIRS_" + fechaHoy + ".xlsx");
 }
 
-// -------------------------------------------------------------
-// GESTIÓN DINÁMICA: JEFES DE SERVICIO
-// -------------------------------------------------------------
-
 async function abrirModalJefes() {
   if (!tokenAdmin) return;
   if (!modalJefesInstance) {
@@ -1032,10 +1011,6 @@ async function eliminarJefe(id) {
     alert("Error al eliminar: " + err.message);
   }
 }
-
-// -------------------------------------------------------------
-// AUDITORÍA: INCIDENTES DE GUARDIA
-// -------------------------------------------------------------
 
 async function abrirModalIncumplidas() {
   if (!tokenAdmin) return;
@@ -1128,10 +1103,6 @@ function exportarExcelIncumplidas() {
   var fechaHoy = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, "Reporte_Incidentes_Guardias_HIRS_" + fechaHoy + ".xlsx");
 }
-
-// -------------------------------------------------------------
-// GESTIÓN DE AUDITORÍA INMUTABLE (LOGS DE ACCIONES)
-// -------------------------------------------------------------
 
 async function abrirModalLogs() {
   if (!tokenAdmin) return;
