@@ -6,8 +6,8 @@ $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
-$APP_VERSION = "v2.4.40";
-$APP_FECHA   = "23/09/2026";
+$APP_VERSION = "v2.4.41";
+$APP_FECHA   = "24/09/2026";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -149,7 +149,6 @@ $APP_FECHA   = "23/09/2026";
       border: 1px solid rgba(239, 68, 68, 0.45) !important;
       border-radius: 10px;
       color: #cbd5e1 !important;
-      padding: 16px 20px;
     }
     .alerta-oscura strong { color: #ffffff !important; }
     .alerta-oscura u { color: #f87171 !important; text-decoration: none; font-weight: 600; }
@@ -209,7 +208,7 @@ $APP_FECHA   = "23/09/2026";
       </button>
 
       <!-- Botón Cerrar Sesión General -->
-      <a href="logout.php" class="btn btn-outline-danger btn-sm" title="Cerrar Sesión de Traza HIRS">
+      <a href="https://trazahirs.com/session/login.php?redirect_to=%2Fguardias%2F" class="btn btn-outline-danger btn-sm" title="Cerrar Sesión de Traza HIRS">
         <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Salir</span>
       </a>
     </div>
@@ -284,14 +283,28 @@ $APP_FECHA   = "23/09/2026";
       <button class="btn btn-outline-danger btn-sm" onclick="cerrarSesionAdmin()">Cerrar Sesion Admin</button>
     </div>
 
-    <!-- Alertas de Descubiertos -->
+    <!-- Alertas de Descubiertos y Ventanas Horarias Sin Cobertura -->
     <div id="contenedorAlertas" class="mb-4" style="display: none;">
-      <div class="alerta-oscura d-flex align-items-start gap-3">
-        <i class="bi bi-exclamation-triangle-fill text-danger fs-4 mt-0"></i>
-        <div class="w-100">
-          <h6 class="text-danger fw-bold mb-2 fs-6">Servicios Críticos Sin Cobertura Detectada (Próximas 24/48 hs):</h6>
-          <div id="listaHuecos" class="small" style="line-height: 1.6;"></div>
+      <div class="alerta-oscura p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom border-danger border-opacity-50">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+            <h6 class="text-danger fw-bold mb-0 fs-6">
+              Servicios y Franjas Horarias Sin Cobertura (Próximas 48 hs):
+            </h6>
+            <span id="badgeCantHuecos" class="badge bg-danger ms-1">0</span>
+          </div>
+
+          <!-- Selector de filtro de servicios -->
+          <div class="d-flex align-items-center gap-2">
+            <label class="text-secondary small mb-0">Filtrar alerta:</label>
+            <select id="filtroServicioAlerta" class="form-select form-select-sm filtro-input" style="min-width: 220px;" onchange="filtrarAlertasPorServicio()">
+              <option value="">Todos los servicios</option>
+            </select>
+          </div>
         </div>
+
+        <div id="listaHuecos" class="small" style="max-height: 240px; overflow-y: auto; line-height: 1.8;"></div>
       </div>
     </div>
 
@@ -321,7 +334,7 @@ $APP_FECHA   = "23/09/2026";
     <div class="row g-2 mb-3">
       <div class="col-md-3">
         <label class="form-label text-secondary small">Buscar por Nombre o Contacto:</label>
-        <input type="text" id="filtroNombre" class="form-control" placeholder="..." autocomplete="new-password" oninput="filtrarHistorial()">
+        <input type="search" id="filtroNombre" name="buscar_query_filtro" class="form-control" placeholder="..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="filtrarHistorial()">
       </div>
       <div class="col-md-3">
         <label class="form-label text-secondary small">Servicio:</label>
