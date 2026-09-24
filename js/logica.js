@@ -65,7 +65,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
       return horaActual >= 20 || horaActual < 8;
     }
 
-    // Caso D: Turnos Fraccionados de 6 Horas (base 08:00 AM)
+    // Caso D: Turnos Fraccionados de 6 Horas
     if (mod.indexOf('6 hs') !== -1) {
       var hoyStr6 = formatearFechaLocalISO(ahora);
       if (hoyStr6 < fIniStr || hoyStr6 > fFinStr) return false;
@@ -90,7 +90,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
       }
     }
 
-    // Fallback Activa por defecto
+    // Fallback Activa por defecto (24 hs base 08:00)
     var iniDef = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
     var finDef = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
     finDef.setDate(finDef.getDate() + 1);
@@ -110,48 +110,56 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var srv = guardia.servicio || '';
 
-  // REGLA TÉCNICO DE IMÁGENES: Lunes a Viernes de 22:00 a 06:00 hs; Fines de semana las 24 hs
+  // Regla Técnico de Imágenes: Lunes a Viernes de 22:00 a 06:00 hs; Fines de semana las 24 hs
   if (srv === 'Tecnico de Imagenes') {
     if (esFinde) return true;
     return horaAhora >= 22 || horaAhora < 6;
   }
 
-  // REGLA RX QUIRÓFANO: Lunes a Viernes pasiva nocturna (20:00 a 08:00 hs); Fines de semana las 24 hs
+  // Regla RX Quirófano: Lunes a Viernes de 20:00 a 08:00 hs; Fines de semana las 24 hs
   if (srv === 'RX Quirofano') {
     if (esFinde) return true;
     return horaAhora >= 20 || horaAhora < 8;
   }
 
-  // REGLA ECOGRAFÍA: Días de semana de 12:00 a 20:00 hs; Fines de semana las 24 hs
+  // Regla Ecografía: Lunes a Viernes de 12:00 a 20:00 hs; Fines de semana las 24 hs
   if (srv === 'Ecografia') {
     if (esFinde) return true;
     return horaAhora >= 12 && horaAhora < 20;
   }
 
-  // Sistemas: Lunes a Viernes pasiva desde las 15:00 hs; Fines de semana las 24 hs
-  if (srv === 'Sistemas') {
-    if (esFinde) return true;
-    return horaAhora >= 15;
-  }
-
-  // Electromedicina: Lunes a Viernes pasiva desde las 13:00 hs; Fines de semana las 24 hs
-  if (srv === 'Electromedicina') {
-    if (esFinde) return true;
-    return horaAhora >= 13;
-  }
-
-  // Farmacia: Lunes a Viernes pasiva desde las 16:00 hs; Fines de semana las 24 hs
-  if (srv === 'Farmacia') {
-    if (esFinde) return true;
-    return horaAhora >= 16;
-  }
-
-  // Resto de servicios pasivos continuos
+  // Sistemas, Electromedicina, Farmacia y resto de servicios pasivos:
+  // Cobertura continua completa durante todo el rango asignado.
   return true;
 }
 
 // -------------------------------------------------------------
-// 3. CÁLCULO DE HORARIOS EXACTOS (INICIO Y FIN)
+// 3. DETERMINACIÓN DE REQUERIMIENTO HORARIO POR SERVICIO
+// -------------------------------------------------------------
+
+function servicioRequiereGuardia(servicio, fechaHora) {
+  var diaSemana = fechaHora.getDay();
+  var hora = fechaHora.getHours();
+  var esFinde = (diaSemana === 0 || diaSemana === 6);
+
+  if (esFinde) return true;
+
+  if (servicio === 'Tecnico de Imagenes') {
+    return hora >= 22 || hora < 6;
+  }
+  if (servicio === 'RX Quirofano') {
+    return hora >= 20 || hora < 8;
+  }
+  if (servicio === 'Ecografia') {
+    return hora >= 12 && hora < 20;
+  }
+
+  // Todos los demás servicios requieren guardia continua 24 hs
+  return true;
+}
+
+// -------------------------------------------------------------
+// 4. CÁLCULO DE HORARIOS EXACTOS (INICIO Y FIN)
 // -------------------------------------------------------------
 
 function obtenerInicioTurnoGuardia(guardia) {
@@ -190,7 +198,6 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
   var horaAhora = ahora.getHours();
   var mod = guardia.modalidad || '';
 
-  // Guardias Activas
   if (guardia.tipo === 'Activa') {
     if (mod.indexOf('24 hs') !== -1 || mod.indexOf('08:00-08:00') !== -1) {
       var fin24 = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
@@ -215,7 +222,7 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
     if (mod.indexOf('02:00-08:00') !== -1) return new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
   }
 
-  // Pasivas con horario nocturno específico
+  // Pasivas con horarios especiales
   if (guardia.servicio === 'Tecnico de Imagenes') {
     var f06 = new Date(yHoy, mHoy, dHoy, 6, 0, 0, 0);
     if (horaAhora >= 22) f06.setDate(f06.getDate() + 1);
@@ -227,7 +234,7 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
     return f08;
   }
 
-  // Fallback estándar 24 hs
+  // Guardias continuas de 24 hs
   var finStd = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
   finStd.setDate(finStd.getDate() + 1);
   return finStd;
