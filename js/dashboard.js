@@ -9,6 +9,7 @@ var guardiasEnVivo = [];
 var guardiasIncumplidasLista = [];
 var logsAuditoriaLista = [];
 var referentesCache = {};
+var huecosDetectadosGlobal = [];
 
 var modalInstance = null;
 var modalConfirmarInstance = null;
@@ -208,7 +209,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
       : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
 
     html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
-              '<i class="bi bi-whatsapp"></i>' +
+              '<i class="bi bi-whatsapp"></i> WSP' +
             '</a>';
   }
 
@@ -227,7 +228,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   }).replace(/"/g, '&quot;');
 
   html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
-            '<i class="bi bi-flag-fill"></i>' +
+            '<i class="bi bi-flag-fill"></i> Reportar' +
           '</button>';
 
   html += '</div>';
@@ -614,54 +615,171 @@ function cerrarSesionAdmin() {
   document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-lock"></i> Administrador';
 }
 
+// -------------------------------------------------------------
+// AUDITORÍA HORARIA DE DESCUBIERTOS (TODOS LOS SERVICIOS)
+// -------------------------------------------------------------
+
+function obtenerTodosLosServicios() {
+  var servicios = [];
+  if (typeof SERVICIOS_CRITICOS !== 'undefined') servicios.push(...SERVICIOS_CRITICOS);
+  if (typeof SERVICIOS_OPERATIVOS !== 'undefined') servicios.push(...SERVICIOS_OPERATIVOS);
+
+  if (Array.isArray(todasLasGuardiasRaw)) {
+    todasLasGuardiasRaw.forEach(function(g) {
+      if (g.servicio && !servicios.includes(g.servicio)) servicios.push(g.servicio);
+    });
+  }
+
+  return [...new Set(servicios)].sort();
+}
+
 async function cargarAlertas() {
   if (!tokenAdmin || !db) return;
   try {
-    var hoy = new Date();
-    var manana = new Date();
-    manana.setDate(manana.getDate() + 1);
+    var ahora = new Date();
+    var limite48hs = new Date(ahora.getTime() + 48 * 60 * 60 * 1000);
+    var hoyStr = formatearFechaLocalISO(ahora);
 
-    var hoyStr = formatearFechaLocalISO(hoy);
-    var mananaStr = formatearFechaLocalISO(manana);
-
+    // Traemos guardias que tengan fecha de fin desde hoy en adelante
     var { data, error } = await db
       .from('guardias')
-      .select('servicio, fecha_inicio, fecha_fin')
+      .select('*')
       .gte('fecha_fin', hoyStr);
 
     if (error) throw error;
 
-    var listaCriticos = (typeof SERVICIOS_CRITICOS !== 'undefined') ? SERVICIOS_CRITICOS : [];
-    var huecos = [];
-    var filas = data || [];
+    var filas = (data || []).map(function(r) {
+      return {
+        id: r.id,
+        servicio: r.servicio,
+        tipo: r.tipo,
+        modalidad: r.modalidad,
+        fechaInicio: r.fecha_inicio,
+        fechaFin: r.fecha_fin,
+        responsable: r.responsable,
+        contacto: r.contacto,
+        interno: r.interno,
+        observaciones: r.observaciones
+      };
+    });
 
-    [hoyStr, mananaStr].forEach(function(fechaEval) {
-      listaCriticos.forEach(function(srv) {
-        var cubierto = filas.some(function(r) {
-          var fIni = String(r.fecha_inicio).slice(0, 10);
-          var fFin = String(r.fecha_fin || r.fecha_inicio).slice(0, 10);
-          return r.servicio === srv && fechaEval >= fIni && fechaEval <= fFin;
+    var todosLosServicios = obtenerTodosLosServicios();
+    huecosDetectadosGlobal = [];
+
+    // Inspección en pasos de 1 hora a lo largo de las próximas 48 hs
+    todosLosServicios.forEach(function(srv) {
+      var huecoActual = null;
+      var cursor = new Date(ahora);
+      cursor.setMinutes(0, 0, 0);
+
+      while (cursor < limite48hs) {
+        var horaEval = new Date(cursor.getTime() + 30 * 60 * 1000); // Mitad de la hora
+        
+        var cubierto = filas.some(function(g) {
+          if (g.servicio !== srv) return false;
+          return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, horaEval) : true;
         });
 
         if (!cubierto) {
-          huecos.push({ servicio: srv, fecha: fechaEval });
+          if (!huecoActual) {
+            huecoActual = {
+              servicio: srv,
+              inicio: new Date(cursor),
+              fin: new Date(cursor.getTime() + 60 * 60 * 1000)
+            };
+          } else {
+            huecoActual.fin = new Date(cursor.getTime() + 60 * 60 * 1000);
+          }
+        } else {
+          if (huecoActual) {
+            huecosDetectadosGlobal.push(huecoActual);
+            huecoActual = null;
+          }
         }
-      });
+
+        cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
+      }
+
+      if (huecoActual) {
+        huecosDetectadosGlobal.push(huecoActual);
+      }
     });
 
-    var cont = document.getElementById('contenedorAlertas');
-    var lista = document.getElementById('listaHuecos');
-    if (huecos.length > 0) {
-      lista.innerHTML = huecos.map(function(h) {
-        return '• <strong>' + h.servicio + '</strong> sin guardia cargada para la fecha: <u>' + h.fecha + '</u>';
-      }).join('<br>');
+    poblarComboFiltroAlertas(todosLosServicios);
+    renderizarListaAlertas(huecosDetectadosGlobal);
+
+  } catch(e) {
+    console.error("Error al auditar descubiertos horarios:", e);
+  }
+}
+
+function poblarComboFiltroAlertas(servicios) {
+  var sel = document.getElementById('filtroServicioAlerta');
+  if (!sel) return;
+  var valorPrevio = sel.value;
+  sel.innerHTML = '<option value="">Todos los servicios (' + servicios.length + ')</option>';
+  servicios.forEach(function(s) {
+    sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
+  });
+  if (valorPrevio) sel.value = valorPrevio;
+}
+
+function filtrarAlertasPorServicio() {
+  var srvFiltro = document.getElementById('filtroServicioAlerta').value;
+  if (!srvFiltro) {
+    renderizarListaAlertas(huecosDetectadosGlobal);
+  } else {
+    var filtrados = huecosDetectadosGlobal.filter(function(h) {
+      return h.servicio === srvFiltro;
+    });
+    renderizarListaAlertas(filtrados);
+  }
+}
+
+function formatearRangoAlerta(inicio, fin) {
+  var fIniStr = inicio.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+  var hIniStr = inicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  var fFinStr = fin.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+  var hFinStr = fin.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  var duracionHoras = Math.round((fin - inicio) / (1000 * 60 * 60));
+
+  if (fIniStr === fFinStr) {
+    return 'el <strong>' + fIniStr + '</strong> de <u>' + hIniStr + ' a ' + hFinStr + ' hs</u> (' + duracionHoras + ' hs sin cobertura)';
+  } else {
+    return 'desde el <strong>' + fIniStr + ' ' + hIniStr + ' hs</strong> hasta el <strong>' + fFinStr + ' ' + hFinStr + ' hs</strong> (' + duracionHoras + ' hs sin cobertura)';
+  }
+}
+
+function renderizarListaAlertas(lista) {
+  var cont = document.getElementById('contenedorAlertas');
+  var contenedorTexto = document.getElementById('listaHuecos');
+  var badge = document.getElementById('badgeCantHuecos');
+
+  if (!cont || !contenedorTexto) return;
+
+  if (badge) badge.innerText = lista.length;
+
+  if (lista.length === 0) {
+    var selVal = document.getElementById('filtroServicioAlerta').value;
+    if (selVal) {
+      contenedorTexto.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i> El servicio <strong>' + selVal + '</strong> tiene cobertura completa en las próximas 48 hs.</span>';
       cont.style.display = 'block';
     } else {
       cont.style.display = 'none';
     }
-  } catch(e) {
-    console.error("Error al cargar alertas:", e);
+    return;
   }
+
+  contenedorTexto.innerHTML = lista.map(function(h) {
+    var descripcion = formatearRangoAlerta(h.inicio, h.fin);
+    return '<div class="mb-1 d-flex align-items-center gap-1 flex-wrap">' +
+             '<span class="badge bg-danger bg-opacity-75 text-white py-1">' + h.servicio + '</span> ' +
+             '<span class="text-light">Sin guardia ' + descripcion + '</span>' +
+           '</div>';
+  }).join('');
+
+  cont.style.display = 'block';
 }
 
 async function cargarHistorial() {
@@ -850,9 +968,7 @@ async function cargarTablaJefes() {
     var lista = data || [];
     tbody.innerHTML = '';
 
-    var listaServiciosMaestra = (typeof SERVICIOS_CRITICOS !== 'undefined' && typeof SERVICIOS_OPERATIVOS !== 'undefined')
-      ? [...new Set([...SERVICIOS_CRITICOS, ...SERVICIOS_OPERATIVOS])].sort()
-      : [];
+    var listaServiciosMaestra = obtenerTodosLosServicios();
 
     selServ.innerHTML = '<option value="">-- Seleccione un Servicio --</option>';
     listaServiciosMaestra.forEach(function(s) {
