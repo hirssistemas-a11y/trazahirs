@@ -29,146 +29,76 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var mFin = parseInt(partesFin[1], 10) - 1;
   var dFin = parseInt(partesFin[2], 10);
 
+  var mod = String(guardia.modalidad || '');
+
   // -------------------------------------------------------------
-  // 1. GUARDIAS ACTIVAS (EN PLANTA)
+  // 1. FRANJAS FRACCIONADAS (Solo si la modalidad lo especifica)
   // -------------------------------------------------------------
-  if (guardia.tipo === 'Activa') {
-    var mod = guardia.modalidad || '24 hs (08:00-08:00)';
+  
+  // 12 Horas Diurna (08:00 a 20:00)
+  if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
+    var hoyStr = formatearFechaLocalISO(ahora);
+    if (hoyStr < fIniStr || hoyStr > fFinStr) return false;
+    var horaD = ahora.getHours();
+    return horaD >= 8 && horaD < 20;
+  }
 
-    // Caso A: 24 Horas (08:00 AM a 08:00 AM del día posterior a fechaFin)
-    if (mod.indexOf('24 hs') !== -1 || mod.indexOf('08:00-08:00') !== -1) {
-      var inicio = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
-      var fin = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
-      fin.setDate(fin.getDate() + 1);
-      return ahoraTimestamp >= inicio.getTime() && ahoraTimestamp < fin.getTime();
+  // 12 Horas Nocturna (20:00 a 08:00 del día siguiente)
+  if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
+    var inicioNoc = new Date(yIni, mIni, dIni, 20, 0, 0, 0);
+    var finNoc = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+    finNoc.setDate(finNoc.getDate() + 1);
+    
+    if (ahoraTimestamp < inicioNoc.getTime() || ahoraTimestamp >= finNoc.getTime()) {
+      return false;
     }
+    var horaN = ahora.getHours();
+    return horaN >= 20 || horaN < 8;
+  }
 
-    // Caso B: 12 Horas Diurna (08:00 a 20:00 de cada día del rango)
-    if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
-      var hoyStr = formatearFechaLocalISO(ahora);
-      if (hoyStr < fIniStr || hoyStr > fFinStr) return false;
+  // Turnos fraccionados de 6 Horas
+  if (mod.indexOf('6 hs') !== -1) {
+    var hoyStr6 = formatearFechaLocalISO(ahora);
+    if (hoyStr6 < fIniStr || hoyStr6 > fFinStr) return false;
 
-      var hora = ahora.getHours();
-      return hora >= 8 && hora < 20;
-    }
-
-    // Caso C: 12 Horas Nocturna (20:00 a 08:00 del día siguiente)
-    if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
-      var inicioNoc = new Date(yIni, mIni, dIni, 20, 0, 0, 0);
-      var finNoc = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
-      finNoc.setDate(finNoc.getDate() + 1);
-      
-      if (ahoraTimestamp < inicioNoc.getTime() || ahoraTimestamp >= finNoc.getTime()) {
-        return false;
-      }
-      var horaActual = ahora.getHours();
-      return horaActual >= 20 || horaActual < 8;
-    }
-
-    // Caso D: Turnos Fraccionados de 6 Horas
-    if (mod.indexOf('6 hs') !== -1) {
-      var hoyStr6 = formatearFechaLocalISO(ahora);
-      if (hoyStr6 < fIniStr || hoyStr6 > fFinStr) return false;
-
-      var h = ahora.getHours();
-
-      // 08:00 a 14:00
-      if (mod.indexOf('08:00-14:00') !== -1) {
-        return h >= 8 && h < 14;
-      }
-      // 14:00 a 20:00
-      if (mod.indexOf('14:00-20:00') !== -1) {
-        return h >= 14 && h < 20;
-      }
-      // 20:00 a 02:00 (Cruza medianoche)
-      if (mod.indexOf('20:00-02:00') !== -1) {
-        return h >= 20 || h < 2;
-      }
-      // 02:00 a 08:00
-      if (mod.indexOf('02:00-08:00') !== -1) {
-        return h >= 2 && h < 8;
-      }
-    }
-
-    // Fallback Activa por defecto (24 hs base 08:00)
-    var iniDef = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
-    var finDef = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
-    finDef.setDate(finDef.getDate() + 1);
-    return ahoraTimestamp >= iniDef.getTime() && ahoraTimestamp < finDef.getTime();
+    var h = ahora.getHours();
+    if (mod.indexOf('08:00-14:00') !== -1) return h >= 8 && h < 14;
+    if (mod.indexOf('14:00-20:00') !== -1) return h >= 14 && h < 20;
+    if (mod.indexOf('20:00-02:00') !== -1) return h >= 20 || h < 2;
+    if (mod.indexOf('02:00-08:00') !== -1) return h >= 2 && h < 8;
   }
 
   // -------------------------------------------------------------
-  // 2. GUARDIAS PASIVAS (A DEMANDA)
+  // 2. RÉGIMEN GENERAL: 24 HORAS CONTINUAS (08:00 AM a 08:00 AM)
+  // Aplica a todas las guardias de 24 hs (Activas o Pasivas: Ecografía,
+  // Sistemas, Cirugía, Imágenes, Laboratorio, Farmacia, etc.)
   // -------------------------------------------------------------
-  var hoyStrLocal = formatearFechaLocalISO(ahora);
-  if (hoyStrLocal < fIniStr || hoyStrLocal > fFinStr) {
-    return false;
-  }
+  var inicioGen = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
+  var finGen = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+  finGen.setDate(finGen.getDate() + 1);
 
-  var diaSemana = ahora.getDay(); // 0 = Domingo, 6 = Sábado
-  var horaAhora = ahora.getHours();
-  var esFinde = (diaSemana === 0 || diaSemana === 6);
-  var srv = guardia.servicio || '';
-
-  // Regla Técnico de Imágenes: Lunes a Viernes de 22:00 a 06:00 hs; Fines de semana las 24 hs
-  if (srv === 'Tecnico de Imagenes') {
-    if (esFinde) return true;
-    return horaAhora >= 22 || horaAhora < 6;
-  }
-
-  // Regla RX Quirófano: Lunes a Viernes de 20:00 a 08:00 hs; Fines de semana las 24 hs
-  if (srv === 'RX Quirofano') {
-    if (esFinde) return true;
-    return horaAhora >= 20 || horaAhora < 8;
-  }
-
-  // Regla Ecografía: Lunes a Viernes de 12:00 a 20:00 hs; Fines de semana las 24 hs
-  if (srv === 'Ecografia') {
-    if (esFinde) return true;
-    return horaAhora >= 12 && horaAhora < 20;
-  }
-
-  // Sistemas, Electromedicina, Farmacia y resto de servicios pasivos:
-  // Cobertura continua completa durante todo el rango asignado.
-  return true;
+  return ahoraTimestamp >= inicioGen.getTime() && ahoraTimestamp < finGen.getTime();
 }
 
 // -------------------------------------------------------------
-// 3. DETERMINACIÓN DE REQUERIMIENTO HORARIO POR SERVICIO
+// 3. DETERMINACIÓN DE COBERTURA REQUERIDA
+// Todo servicio que figure en el hospital requiere estar cubierto
 // -------------------------------------------------------------
-
 function servicioRequiereGuardia(servicio, fechaHora) {
-  var diaSemana = fechaHora.getDay();
-  var hora = fechaHora.getHours();
-  var esFinde = (diaSemana === 0 || diaSemana === 6);
-
-  if (esFinde) return true;
-
-  if (servicio === 'Tecnico de Imagenes') {
-    return hora >= 22 || hora < 6;
-  }
-  if (servicio === 'RX Quirofano') {
-    return hora >= 20 || hora < 8;
-  }
-  if (servicio === 'Ecografia') {
-    return hora >= 12 && hora < 20;
-  }
-
-  // Todos los demás servicios requieren guardia continua 24 hs
+  // Todos los servicios cargados requieren cobertura continua 24 hs
   return true;
 }
 
 // -------------------------------------------------------------
-// 4. CÁLCULO DE HORARIOS EXACTOS (INICIO Y FIN)
+// 4. CÁLCULO DE HORARIOS EXACTOS (INICIO Y FIN DE TURNO)
 // -------------------------------------------------------------
-
 function obtenerInicioTurnoGuardia(guardia) {
   var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
   if (!fIniStr) return null;
 
   var pIni = fIniStr.split('-');
   var yIni = parseInt(pIni[0], 10), mIni = parseInt(pIni[1], 10) - 1, dIni = parseInt(pIni[2], 10);
-  var mod = guardia.modalidad || '';
+  var mod = String(guardia.modalidad || '');
 
   var horaInicio = 8; // Predeterminado 08:00 AM
 
@@ -178,8 +108,6 @@ function obtenerInicioTurnoGuardia(guardia) {
     horaInicio = 14;
   } else if (mod.indexOf('02:00-08:00') !== -1) {
     horaInicio = 2;
-  } else if (guardia.servicio === 'Tecnico de Imagenes') {
-    horaInicio = 22;
   }
 
   return new Date(yIni, mIni, dIni, horaInicio, 0, 0, 0);
@@ -187,7 +115,6 @@ function obtenerInicioTurnoGuardia(guardia) {
 
 function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
   var ahora = fechaReferencia || new Date();
-  var fIniStr = String(guardia.fechaInicio || '').slice(0, 10);
   var fFinStr = String(guardia.fechaFin || guardia.fechaInicio || '').slice(0, 10);
   if (!fFinStr) return null;
 
@@ -196,45 +123,27 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
 
   var yHoy = ahora.getFullYear(), mHoy = ahora.getMonth(), dHoy = ahora.getDate();
   var horaAhora = ahora.getHours();
-  var mod = guardia.modalidad || '';
+  var mod = String(guardia.modalidad || '');
 
-  if (guardia.tipo === 'Activa') {
-    if (mod.indexOf('24 hs') !== -1 || mod.indexOf('08:00-08:00') !== -1) {
-      var fin24 = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
-      fin24.setDate(fin24.getDate() + 1);
-      return fin24;
-    }
-    if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
-      return new Date(yHoy, mHoy, dHoy, 20, 0, 0, 0);
-    }
-    if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
-      var finNoc = new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
-      if (horaAhora >= 20) finNoc.setDate(finNoc.getDate() + 1);
-      return finNoc;
-    }
-    if (mod.indexOf('08:00-14:00') !== -1) return new Date(yHoy, mHoy, dHoy, 14, 0, 0, 0);
-    if (mod.indexOf('14:00-20:00') !== -1) return new Date(yHoy, mHoy, dHoy, 20, 0, 0, 0);
-    if (mod.indexOf('20:00-02:00') !== -1) {
-      var f02 = new Date(yHoy, mHoy, dHoy, 2, 0, 0, 0);
-      if (horaAhora >= 20) f02.setDate(f02.getDate() + 1);
-      return f02;
-    }
-    if (mod.indexOf('02:00-08:00') !== -1) return new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
+  // Fraccionadas
+  if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
+    return new Date(yHoy, mHoy, dHoy, 20, 0, 0, 0);
   }
+  if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1) {
+    var finNoc = new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
+    if (horaAhora >= 20) finNoc.setDate(finNoc.getDate() + 1);
+    return finNoc;
+  }
+  if (mod.indexOf('08:00-14:00') !== -1) return new Date(yHoy, mHoy, dHoy, 14, 0, 0, 0);
+  if (mod.indexOf('14:00-20:00') !== -1) return new Date(yHoy, mHoy, dHoy, 20, 0, 0, 0);
+  if (mod.indexOf('20:00-02:00') !== -1) {
+    var f02 = new Date(yHoy, mHoy, dHoy, 2, 0, 0, 0);
+    if (horaAhora >= 20) f02.setDate(f02.getDate() + 1);
+    return f02;
+  }
+  if (mod.indexOf('02:00-08:00') !== -1) return new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
 
-  // Pasivas con horarios especiales
-  if (guardia.servicio === 'Tecnico de Imagenes') {
-    var f06 = new Date(yHoy, mHoy, dHoy, 6, 0, 0, 0);
-    if (horaAhora >= 22) f06.setDate(f06.getDate() + 1);
-    return f06;
-  }
-  if (guardia.servicio === 'RX Quirofano') {
-    var f08 = new Date(yHoy, mHoy, dHoy, 8, 0, 0, 0);
-    if (horaAhora >= 20) f08.setDate(f08.getDate() + 1);
-    return f08;
-  }
-
-  // Guardias continuas de 24 hs
+  // Turnos estándar 24 hs (08:00 a 08:00 del día posterior)
   var finStd = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
   finStd.setDate(finStd.getDate() + 1);
   return finStd;
