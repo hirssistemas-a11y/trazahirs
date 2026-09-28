@@ -614,6 +614,7 @@ async function cargarAlertas() {
   try {
     var ahora = new Date();
 
+    // 1. Alineamos el inicio de auditoría a las 08:00 AM del ciclo actual
     var inicioAuditoria = new Date(ahora);
     if (ahora.getHours() < 8) {
       inicioAuditoria.setDate(inicioAuditoria.getDate() - 1);
@@ -648,6 +649,7 @@ async function cargarAlertas() {
     var todosLosServicios = obtenerTodosLosServicios();
     huecosDetectadosGlobal = [];
 
+    // Paso de resolución de 30 minutos
     var PASO_MINUTOS = 30;
     var PASO_MS = PASO_MINUTOS * 60 * 1000;
 
@@ -658,9 +660,12 @@ async function cargarAlertas() {
       while (cursor < finAuditoria) {
         var tiempoMedio = new Date(cursor.getTime() + (PASO_MS / 2));
 
+        // Usa la función de auditoría inteligente que contempla planta + pasiva
         var cubierto = filas.some(function(g) {
           if (g.servicio !== srv) return false;
-          return typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, tiempoMedio) : true;
+          return typeof guardiaCubreHoraAuditoria === 'function' 
+            ? guardiaCubreHoraAuditoria(g, tiempoMedio) 
+            : (typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, tiempoMedio) : true);
         });
 
         if (!cubierto) {
