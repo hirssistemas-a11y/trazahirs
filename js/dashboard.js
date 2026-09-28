@@ -1,5 +1,5 @@
 // ==========================================
-// CONTROLADOR DEL MONITOR EN VIVO (HIRS)
+// CONTROLADOR DEL MONITOR EN VIVO (HIRS).
 // ==========================================
 
 var tokenAdmin = sessionStorage.getItem("admin_pin") || null;
