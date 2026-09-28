@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Monitor de Guardias - HIRS</title>
   
+  <!-- Base relativa para que busque siempre dentro del directorio actual del modulo -->
+  <base href="./">
+
   <!-- CSS Bootstrap & Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   
-  <!-- Cache-Busting en CSS para forzar actualización en producción -->
-  <link rel="stylesheet" href="css/estilos.css?v=2.4.49">
+  <!-- Cache-Busting en CSS -->
+  <link rel="stylesheet" href="./css/estilos.css?v=2.4.49">
 </head>
 <body class="bg-light">
 
@@ -99,9 +102,9 @@
 
   </main>
 
-  <!-- Scripts con versión 2.4.49 para evitar caché obsoleto -->
+  <!-- Scripts relativos al modulo -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/logica.js?v=2.4.49"></script>
-  <script src="js/dashboard.js?v=2.4.49"></script>
+  <script src="./js/logica.js?v=2.4.49"></script>
+  <script src="./js/dashboard.js?v=2.4.49"></script>
 </body>
 </html>
