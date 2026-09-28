@@ -6,7 +6,7 @@ $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
-$APP_VERSION = "v2.4.49";
+$APP_VERSION = "v2.4.50";
 $APP_FECHA   = "28/09/2026";
 ?>
 <!DOCTYPE html>
