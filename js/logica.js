@@ -1,5 +1,5 @@
 // ==========================================
-// LÓGICA HORARIA Y VALIDACIÓN DE GUARDIAS HIRS
+// LÓGICA HORARIA Y VALIDACIÓN DE GUARDIAS HIRS.
 // ==========================================
 
 function formatearFechaLocalISO(d) {
