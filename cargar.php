@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
-$APP_VERSION = "v2.6.0";
+$APP_VERSION = "v2.6.2";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -38,6 +38,12 @@ $APP_VERSION = "v2.6.0";
       color: #ffffff !important; 
       border-color: #38bdf8 !important; 
       box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.25) !important; 
+    }
+    .form-control:disabled, .form-select:disabled {
+      background-color: #1e293b !important;
+      color: #64748b !important;
+      border-color: #334155 !important;
+      cursor: not-allowed;
     }
     .btn-modo-fecha {
       font-size: 0.82rem;
@@ -116,8 +122,8 @@ $APP_VERSION = "v2.6.0";
           </div>
         </label>
         
-        <input type="text" id="selectorFechas" class="form-control" placeholder="Seleccione fecha(s)..." required readonly>
-        <div id="rangoAyuda" class="form-text text-secondary small mt-1">Seleccione una fecha de inicio y una de fin para cubrir el bloque.</div>
+        <input type="text" id="selectorFechas" class="form-control" placeholder="Haga clic para seleccionar fecha de inicio y fin..." required readonly>
+        <div id="rangoAyuda" class="form-text text-secondary small mt-1">Haga clic en el primer día y luego en el último día para cubrir el rango.</div>
 
         <input type="hidden" id="fecha_inicio">
         <input type="hidden" id="fecha_fin">
@@ -139,14 +145,15 @@ $APP_VERSION = "v2.6.0";
         </div>
       </div>
 
-      <!-- Fila 5: Observaciones / Estado Operativo -->
-      <div class="mb-4">
+      <!-- Fila 5: Observaciones / Estado Operativo (Solo habilitado para áreas críticas) -->
+      <div class="mb-4" id="bloqueObservaciones">
         <label for="observaciones" class="form-label text-light fw-bold small">Observaciones / Estado Operativo Especial</label>
         <select id="observaciones" class="form-select">
           <option value="Normal Activa">Normal Activa (Sin Novedad)</option>
           <option value="Código Rojo">Código Rojo (Sin Cobertura / Crítico)</option>
           <option value="Guardia Restringida">Guardia Restringida / Refuerzo</option>
         </select>
+        <div id="observacionesAyuda" class="form-text text-secondary small mt-1"></div>
       </div>
 
       <div class="d-flex justify-content-end gap-2 pt-3 border-top border-secondary">
