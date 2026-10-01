@@ -33,7 +33,25 @@ function esGuardiaVigente(guardia, fechaReferencia) {
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var horaAhora = ahora.getHours();
 
-  // A. TURNOS FRACCIONADOS (Guardia Externa / UTI / Neo)
+  // A. TURNOS DE 18 HORAS
+  if (mod.indexOf('18 hs') !== -1) {
+    // 08:00 a 02:00 (cruza medianoche hasta las 02:00 AM del día siguiente)
+    if (mod.indexOf('08:00-02:00') !== -1 || mod.indexOf('08:00 a 02:00') !== -1) {
+      var ini18_1 = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
+      var fin18_1 = new Date(yFin, mFin, dFin, 2, 0, 0, 0);
+      fin18_1.setDate(fin18_1.getDate() + 1);
+      return ahoraTimestamp >= ini18_1.getTime() && ahoraTimestamp < fin18_1.getTime();
+    }
+    // 14:00 a 08:00 (cruza medianoche hasta las 08:00 AM del día siguiente)
+    if (mod.indexOf('14:00-08:00') !== -1 || mod.indexOf('14:00 a 08:00') !== -1) {
+      var ini18_2 = new Date(yIni, mIni, dIni, 14, 0, 0, 0);
+      var fin18_2 = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      fin18_2.setDate(fin18_2.getDate() + 1);
+      return ahoraTimestamp >= ini18_2.getTime() && ahoraTimestamp < fin18_2.getTime();
+    }
+  }
+
+  // B. TURNOS DE 12 HORAS
   if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
     var hoyStr = formatearFechaLocalISO(ahora);
     if (hoyStr < fIniStr || hoyStr > fFinStr) return false;
@@ -47,6 +65,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
     return ahoraTimestamp >= inicioNoc.getTime() && ahoraTimestamp < finNoc.getTime();
   }
 
+  // C. TURNOS DE 6 HORAS
   if (mod.indexOf('6 hs') !== -1) {
     if (mod.indexOf('08:00-14:00') !== -1) {
       var ini08 = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
@@ -78,7 +97,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
     }
   }
 
-  // B. REGLA BASE DE FECHAS (24 hs base 08:00 a 08:00)
+  // D. REGLA BASE DE FECHAS (24 hs base 08:00 a 08:00)
   var inicioGen = new Date(yIni, mIni, dIni, 8, 0, 0, 0);
   var finGen = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
   finGen.setDate(finGen.getDate() + 1);
@@ -87,31 +106,31 @@ function esGuardiaVigente(guardia, fechaReferencia) {
     return false;
   }
 
-  // C. HORARIOS ESPECÍFICOS DE PLANTA VS GUARDIA PASIVA (Lunes a Viernes)
+  // E. HORARIOS ESPECÍFICOS DE PLANTA VS GUARDIA PASIVA (Lunes a Viernes)
   if (!esFinde) {
-    // Técnico de Imágenes: Pasiva de 22:00 a 06:00 hs
+    if (srv.indexOf('Cardiologia') !== -1) {
+      if (guardia.tipo === 'Pasiva') {
+        return (horaAhora >= 16 || horaAhora < 9);
+      }
+      return true;
+    }
     if (srv === 'Tecnico de Imagenes') {
       return (horaAhora >= 22 || horaAhora < 6);
     }
-    // Sistemas: Pasiva de 15:00 a 08:00 hs del día siguiente
     if (srv === 'Sistemas') {
       return (horaAhora >= 15 || horaAhora < 8);
     }
-    // Electromedicina: Pasiva de 13:00 a 08:00 hs del día siguiente
     if (srv === 'Electromedicina') {
       return (horaAhora >= 13 || horaAhora < 8);
     }
-    // Farmacia: Pasiva de 16:00 a 08:00 hs del día siguiente
     if (srv === 'Farmacia') {
       return (horaAhora >= 16 || horaAhora < 8);
     }
-    // RX Quirófano: Pasiva de 20:00 a 08:00 hs
     if (srv === 'RX Quirofano') {
       return (horaAhora >= 20 || horaAhora < 8);
     }
   }
 
-  // Fines de semana o servicios continuos de 24 hs (Clínica, Cirugía, Laboratorio, etc.)
   return true;
 }
 
@@ -121,7 +140,6 @@ function esGuardiaVigente(guardia, fechaReferencia) {
 function guardiaCubreHoraAuditoria(guardia, fechaHoraEval) {
   var evalTimestamp = fechaHoraEval.getTime();
   var srv = String(guardia.servicio || '');
-  var mod = String(guardia.modalidad || '');
   var diaSemana = fechaHoraEval.getDay();
   var esFinde = (diaSemana === 0 || diaSemana === 6);
   var hora = fechaHoraEval.getHours();
@@ -139,19 +157,17 @@ function guardiaCubreHoraAuditoria(guardia, fechaHoraEval) {
   var finGen = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
   finGen.setDate(finGen.getDate() + 1);
 
-  // Si está dentro de las fechas de asignación del servicio pasivo:
   if (evalTimestamp >= inicioGen.getTime() && evalTimestamp < finGen.getTime()) {
-    // Si es un servicio con horario diurno de planta cubierto por la institución:
     if (!esFinde) {
-      if (srv === 'Tecnico de Imagenes' && (hora >= 6 && hora < 22)) return true; // Horario de planta
-      if (srv === 'Sistemas' && (hora >= 8 && hora < 15)) return true;           // Horario de planta
-      if (srv === 'Electromedicina' && (hora >= 8 && hora < 13)) return true;    // Horario de planta
-      if (srv === 'Farmacia' && (hora >= 8 && hora < 16)) return true;           // Horario de planta
-      if (srv === 'RX Quirofano' && (hora >= 8 && hora < 20)) return true;       // Horario de planta
+      if (srv.indexOf('Cardiologia') !== -1 && (hora >= 9 && hora < 16)) return true;
+      if (srv === 'Tecnico de Imagenes' && (hora >= 6 && hora < 22)) return true;
+      if (srv === 'Sistemas' && (hora >= 8 && hora < 15)) return true;
+      if (srv === 'Electromedicina' && (hora >= 8 && hora < 13)) return true;
+      if (srv === 'Farmacia' && (hora >= 8 && hora < 16)) return true;
+      if (srv === 'RX Quirofano' && (hora >= 8 && hora < 20)) return true;
     }
   }
 
-  // Para el resto de horas o servicios fraccionados, usa la validación exacta:
   return esGuardiaVigente(guardia, fechaHoraEval);
 }
 
@@ -169,7 +185,14 @@ function obtenerInicioTurnoGuardia(guardia) {
 
   var horaInicio = 8;
 
-  if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1 || mod.indexOf('20:00-02:00') !== -1) {
+  // Turnos 18 hs
+  if (mod.indexOf('18 hs') !== -1) {
+    if (mod.indexOf('14:00-08:00') !== -1 || mod.indexOf('14:00 a 08:00') !== -1) {
+      horaInicio = 14;
+    } else {
+      horaInicio = 8;
+    }
+  } else if (mod.indexOf('12 hs Nocturna') !== -1 || mod.indexOf('20:00-08:00') !== -1 || mod.indexOf('20:00-02:00') !== -1) {
     horaInicio = 20;
   } else if (mod.indexOf('14:00-20:00') !== -1) {
     horaInicio = 14;
@@ -198,6 +221,21 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
   var mod = String(guardia.modalidad || '');
   var srv = String(guardia.servicio || '');
 
+  // 18 Horas
+  if (mod.indexOf('18 hs') !== -1) {
+    if (mod.indexOf('08:00-02:00') !== -1 || mod.indexOf('08:00 a 02:00') !== -1) {
+      var f18_02 = new Date(yFin, mFin, dFin, 2, 0, 0, 0);
+      f18_02.setDate(f18_02.getDate() + 1);
+      return f18_02;
+    }
+    if (mod.indexOf('14:00-08:00') !== -1 || mod.indexOf('14:00 a 08:00') !== -1) {
+      var f18_08 = new Date(yFin, mFin, dFin, 8, 0, 0, 0);
+      f18_08.setDate(f18_08.getDate() + 1);
+      return f18_08;
+    }
+  }
+
+  // 12 Horas
   if (mod.indexOf('12 hs Diurna') !== -1 || mod.indexOf('08:00-20:00') !== -1) {
     return new Date(yFin, mFin, dFin, 20, 0, 0, 0);
   }
@@ -206,6 +244,8 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
     finNoc.setDate(finNoc.getDate() + 1);
     return finNoc;
   }
+
+  // 6 Horas
   if (mod.indexOf('08:00-14:00') !== -1) return new Date(yFin, mFin, dFin, 14, 0, 0, 0);
   if (mod.indexOf('14:00-20:00') !== -1) return new Date(yFin, mFin, dFin, 20, 0, 0, 0);
   if (mod.indexOf('20:00-02:00') !== -1) {
@@ -220,7 +260,12 @@ function obtenerFinTurnoGuardia(guardia, fechaReferencia) {
     return f08;
   }
 
-  // Pasivas con corte matutino
+  if (srv.indexOf('Cardiologia') !== -1 && guardia.tipo === 'Pasiva') {
+    var f09 = new Date(yHoy, mHoy, dHoy, 9, 0, 0, 0);
+    if (horaAhora >= 16) f09.setDate(f09.getDate() + 1);
+    return f09;
+  }
+
   if (srv === 'Tecnico de Imagenes') {
     var f06 = new Date(yHoy, mHoy, dHoy, 6, 0, 0, 0);
     if (horaAhora >= 22) f06.setDate(f06.getDate() + 1);
