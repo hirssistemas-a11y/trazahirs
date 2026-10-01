@@ -208,7 +208,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
       : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
 
     html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
-              '<i class="bi bi-whatsapp"></i>' +
+              '<i class="bi bi-whatsapp"></i> WSP' +
             '</a>';
   }
 
@@ -227,7 +227,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   }).replace(/"/g, '&quot;');
 
   html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
-            '<i class="bi bi-flag-fill"></i>' +
+            '<i class="bi bi-flag-fill"></i> Reportar' +
           '</button>';
 
   html += '</div>';
@@ -614,7 +614,6 @@ async function cargarAlertas() {
   try {
     var ahora = new Date();
 
-    // 1. Alineamos el inicio de auditoría a las 08:00 AM del ciclo actual
     var inicioAuditoria = new Date(ahora);
     if (ahora.getHours() < 8) {
       inicioAuditoria.setDate(inicioAuditoria.getDate() - 1);
@@ -649,7 +648,6 @@ async function cargarAlertas() {
     var todosLosServicios = obtenerTodosLosServicios();
     huecosDetectadosGlobal = [];
 
-    // Paso de resolución de 30 minutos
     var PASO_MINUTOS = 30;
     var PASO_MS = PASO_MINUTOS * 60 * 1000;
 
@@ -660,7 +658,6 @@ async function cargarAlertas() {
       while (cursor < finAuditoria) {
         var tiempoMedio = new Date(cursor.getTime() + (PASO_MS / 2));
 
-        // Usa la función de auditoría inteligente que contempla planta + pasiva
         var cubierto = filas.some(function(g) {
           if (g.servicio !== srv) return false;
           return typeof guardiaCubreHoraAuditoria === 'function' 
@@ -850,7 +847,7 @@ function renderizarTablaHistorial(datos) {
 
     tbody.innerHTML += '<tr>' +
       '<td class="text-secondary small">' + d.timestamp + '</td>' +
-      '<td class="fw-bold">' + d.servicio + badgeObsHist + '</td>' +
+      '<td class="fw-bold text-white">' + d.servicio + badgeObsHist + '</td>' +
       '<td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td>' +
       '<td><small>' + d.modalidad + '</small></td>' +
       '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
