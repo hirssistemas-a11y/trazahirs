@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
-$APP_VERSION = "v2.6.2";
+$APP_VERSION = "v2.6.3";
 ?>
 <!DOCTYPE html>
 <html lang="es">
