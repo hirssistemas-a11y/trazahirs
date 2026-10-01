@@ -208,7 +208,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
       : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
 
     html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
-              '<i class="bi bi-whatsapp"></i> WSP' +
+              '<i class="bi bi-whatsapp"></i>' +
             '</a>';
   }
 
@@ -227,7 +227,7 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   }).replace(/"/g, '&quot;');
 
   html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
-            '<i class="bi bi-flag-fill"></i> Reportar' +
+            '<i class="bi bi-flag-fill"></i>' +
           '</button>';
 
   html += '</div>';
