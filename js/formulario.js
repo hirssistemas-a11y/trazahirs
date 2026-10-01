@@ -2,32 +2,96 @@
 // FORMULARIO DE CARGA: PRECONFIGURACIÓN SERVICIO POR SERVICIO
 // =========================================================
 
-// CONFIGURACIÓN MAESTRA DE SERVICIOS HIRS
-// define: tipo sugerido/bloqueado, si admite fraccionamiento y franjas permitidas
 var CONFIG_SERVICIOS = {
-  // --- SERVICIOS CON FRACCIONAMIENTO TOTAL (6, 12, 18 y 24 hs) ---
-  "Guardia externa Adultos": { tipo: "Activa", fraccionable: true, nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs" },
-  "Guardia externa Pediatrica": { tipo: "Activa", fraccionable: true, nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs" },
-  "Neonatologia": { tipo: "Activa", fraccionable: true, nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs" },
-  "Terapia Intensiva (UTI)": { tipo: "Activa", fraccionable: true, nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs" },
-  "Terapia Intensiva Pediatrica (UTIP)": { tipo: "Activa", fraccionable: true, nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs" },
-  "Pediatria": { tipo: "Activa", fraccionable: true, nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs" },
+  // --- SERVICIOS CON FRACCIONAMIENTO TOTAL Y ESTADOS CRÍTICOS (Código Rojo / Restringida) ---
+  "Guardia externa Adultos": { 
+    tipo: "Activa", 
+    fraccionable: true, 
+    permiteAlertaCritica: true,
+    nota: "Admite 6 hs, 12 hs, 18 hs y 24 hs. Habilitado para Código Rojo o Guardia Restringida." 
+  },
+  "Guardia externa Pediatrica": { 
+    tipo: "Activa", 
+    fraccionable: true, 
+    permiteAlertaCritica: true,
+    nota: "Admite 6 hs, 12 hs, 18 hs y 24 hs. Habilitado para Código Rojo o Guardia Restringida." 
+  },
+  "Neonatologia": { 
+    tipo: "Activa", 
+    fraccionable: true, 
+    permiteAlertaCritica: false,
+    nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs." 
+  },
+  "Terapia Intensiva (UTI)": { 
+    tipo: "Activa", 
+    fraccionable: true, 
+    permiteAlertaCritica: false,
+    nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs." 
+  },
+  "Terapia Intensiva Pediatrica (UTIP)": { 
+    tipo: "Activa", 
+    fraccionable: true, 
+    permiteAlertaCritica: false,
+    nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs." 
+  },
+  "Pediatria": { 
+    tipo: "Activa", 
+    fraccionable: true, 
+    permiteAlertaCritica: false,
+    nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs." 
+  },
 
   // --- SERVICIOS MIXTOS (Planta de día / Pasiva de noche y fines de semana) ---
-  "Cardiologia/Unidad Coronaria": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, nota: "Pasiva 16:00 a 09:00 hs (o Activa en planta según profesional)" },
-  "Sistemas": { tipo: "Pasiva", fraccionable: false, tipoBloqueado: true, nota: "Pasiva lun a vie de 15:00 a 08:00 hs. Finde 24 hs." },
-  "Electromedicina": { tipo: "Pasiva", fraccionable: false, tipoBloqueado: true, nota: "Pasiva lun a vie de 13:00 a 08:00 hs. Finde 24 hs." },
-  "Farmacia": { tipo: "Pasiva", fraccionable: false, tipoBloqueado: true, nota: "Pasiva lun a vie de 16:00 a 08:00 hs. Finde 24 hs." },
-  "Tecnico de Imagenes": { tipo: "Pasiva", fraccionable: false, tipoBloqueado: true, nota: "Pasiva lun a vie de 22:00 a 06:00 hs. Finde 24 hs." },
-  "RX Quirofano": { tipo: "Pasiva", fraccionable: false, tipoBloqueado: true, nota: "Pasiva lun a vie de 20:00 a 08:00 hs. Finde 24 hs." },
+  "Cardiologia/Unidad Coronaria": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoEditable: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 16:00 a 09:00 hs (o Activa en planta según profesional). Finde 24 hs." 
+  },
+  "Sistemas": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 15:00 a 08:00 hs. Finde 24 hs." 
+  },
+  "Electromedicina": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 13:00 a 08:00 hs. Finde 24 hs." 
+  },
+  "Farmacia": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 16:00 a 08:00 hs. Finde 24 hs." 
+  },
+  "Tecnico de Imagenes": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 22:00 a 06:00 hs. Finde 24 hs." 
+  },
+  "RX Quirofano": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 20:00 a 08:00 hs. Finde 24 hs." 
+  },
 
-  // --- PASIVAS ESTÁNDAR 24 HS / SEMANAL ---
-  "Hemoterapia": { tipo: "Pasiva", fraccionable: false, nota: "Guardia pasiva continua / semanal" },
-  "Hemodinamia": { tipo: "Pasiva", fraccionable: false, nota: "Guardia pasiva continua / semanal" },
-  "Anestesista": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, nota: "Pasiva continua / Refuerzo activo" },
-  "Cirugia General": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, nota: "Pasiva continua / Bloques 24 hs" },
-  "Traumatologia": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, nota: "Pasiva continua / Bloques 24 hs" },
-  "Laboratorio": { tipo: "Activa", fraccionable: false, tipoEditable: true, nota: "Guardia activa de planta 24 hs" }
+  // --- PASIVAS Y ACTIVAS ESTÁNDAR ---
+  "Hemoterapia": { tipo: "Pasiva", fraccionable: false, permiteAlertaCritica: false, nota: "Guardia pasiva continua / semanal." },
+  "Hemodinamia": { tipo: "Pasiva", fraccionable: false, permiteAlertaCritica: false, nota: "Guardia pasiva continua / semanal." },
+  "Anestesista": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Pasiva continua / Refuerzo activo." },
+  "Cirugia General": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Pasiva continua / Bloques 24 hs." },
+  "Traumatologia": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Pasiva continua / Bloques 24 hs." },
+  "Laboratorio": { tipo: "Activa", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Guardia activa de planta 24 hs." }
 };
 
 var fpFechas = null;
@@ -40,13 +104,11 @@ document.addEventListener('DOMContentLoaded', function() {
   var selServicio = document.getElementById('servicio');
   var selTipo = document.getElementById('tipo');
   var selDuracion = document.getElementById('duracion');
-  var selFranja = document.getElementById('franja');
 
   selServicio.addEventListener('change', alCambiarServicio);
   selTipo.addEventListener('change', alCambiarTipo);
   selDuracion.addEventListener('change', alCambiarDuracion);
 
-  // Inicialización con el primer servicio
   if (selServicio.options.length > 1) {
     selServicio.selectedIndex = 1;
     alCambiarServicio();
@@ -61,7 +123,6 @@ function poblarComboServicios() {
 
   var lista = Object.keys(CONFIG_SERVICIOS);
 
-  // Unir con los definidos en config.js si existen
   if (typeof SERVICIOS_CRITICOS !== 'undefined') {
     SERVICIOS_CRITICOS.forEach(function(s) { if (!lista.includes(s)) lista.push(s); });
   }
@@ -75,19 +136,21 @@ function poblarComboServicios() {
 }
 
 // -------------------------------------------------------------
-// ENCADENAMIENTO DE LOS 3 CASILLEROS
+// CONTROL ESTRICTO DE SELECTORES Y ESTADO OPERATIVO
 // -------------------------------------------------------------
 
 function alCambiarServicio() {
   var srv = document.getElementById('servicio').value;
-  var conf = CONFIG_SERVICIOS[srv] || { tipo: "Activa", fraccionable: false, nota: "" };
+  var conf = CONFIG_SERVICIOS[srv] || { tipo: "Activa", fraccionable: false, permiteAlertaCritica: false, nota: "" };
 
   var selTipo = document.getElementById('tipo');
   var lblNota = document.getElementById('servicioAyuda');
+  var selObs = document.getElementById('observaciones');
+  var obsAyuda = document.getElementById('observacionesAyuda');
 
   lblNota.innerText = conf.nota || "";
 
-  // 1. Configurar Tipo de Guardia
+  // 1. Tipo de Guardia (Bloqueado o editable)
   selTipo.value = conf.tipo;
   if (conf.tipoBloqueado) {
     selTipo.setAttribute('disabled', 'disabled');
@@ -95,7 +158,17 @@ function alCambiarServicio() {
     selTipo.removeAttribute('disabled');
   }
 
-  // 2. Poblar Casillero 2: Duración del Turno
+  // 2. Control de Observaciones (Código Rojo / Guardia Restringida)
+  if (conf.permiteAlertaCritica) {
+    selObs.removeAttribute('disabled');
+    obsAyuda.innerText = "Este servicio permite reportar contingencias operativas.";
+  } else {
+    selObs.value = "Normal Activa";
+    selObs.setAttribute('disabled', 'disabled');
+    obsAyuda.innerText = "Servicio con estado operativo estándar (Normal Activa).";
+  }
+
+  // 3. Duración y Franjas
   actualizarSelectorDuracion(conf);
 }
 
@@ -111,13 +184,11 @@ function actualizarSelectorDuracion(conf) {
   selDuracion.innerHTML = '';
 
   if (conf.fraccionable) {
-    // Servicios fraccionables: admiten 24, 18, 12 y 6 horas
     selDuracion.innerHTML += '<option value="24 hs">24 Horas</option>';
     selDuracion.innerHTML += '<option value="18 hs">18 Horas</option>';
     selDuracion.innerHTML += '<option value="12 hs">12 Horas</option>';
     selDuracion.innerHTML += '<option value="6 hs">6 Horas</option>';
   } else {
-    // Servicios estándar / pasivas fijas
     if (selTipo.value === 'Pasiva') {
       selDuracion.innerHTML += '<option value="Semanal/Bloque">Semanal / Bloque Continuo</option>';
       selDuracion.innerHTML += '<option value="24 hs">24 Horas (Día individual)</option>';
@@ -154,7 +225,7 @@ function alCambiarDuracion() {
 }
 
 // -------------------------------------------------------------
-// MANEJO DE FECHAS (FLATPICKR)
+// MANEJO DE FECHAS (FLATPICKR RANGE SEGURO)
 // -------------------------------------------------------------
 
 function cambiarModoFecha(modo) {
@@ -166,7 +237,7 @@ function cambiarModoFecha(modo) {
   if (modo === 'rango') {
     bRango.className = 'btn btn-sm btn-outline-info btn-modo-fecha active';
     bDias.className = 'btn btn-sm btn-outline-secondary btn-modo-fecha';
-    txtAyuda.innerText = 'Seleccione una fecha de inicio y una de fin para cubrir el bloque.';
+    txtAyuda.innerText = 'Haga clic en el primer día y luego en el último día para cubrir el rango.';
   } else {
     bDias.className = 'btn btn-sm btn-outline-info btn-modo-fecha active';
     bRango.className = 'btn btn-sm btn-outline-secondary btn-modo-fecha';
@@ -177,33 +248,45 @@ function cambiarModoFecha(modo) {
 }
 
 function inicializarFlatpickr() {
-  if (fpFechas) fpFechas.destroy();
+  if (fpFechas) {
+    fpFechas.destroy();
+  }
 
-  var hoy = new Date();
   var inputFechas = document.getElementById('selectorFechas');
   inputFechas.value = '';
+  document.getElementById('fecha_inicio').value = '';
+  document.getElementById('fecha_fin').value = '';
 
   fpFechas = flatpickr(inputFechas, {
     mode: modoFechaActual,
     dateFormat: "Y-m-d",
     altInput: true,
     altFormat: "d/m/Y",
-    locale: "es",
-    defaultDate: modoFechaActual === 'rango' ? [hoy, hoy] : [hoy],
-    onChange: function(selectedDates, dateStr) {
+    locale: {
+      firstDayOfWeek: 1,
+      weekdays: {
+        shorthand: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
+        longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+      },
+      months: {
+        shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+        longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+      },
+      rangeSeparator: " al "
+    },
+    // No forzamos defaultDate duplicado para permitir selección limpia de 2 clics
+    onChange: function(selectedDates) {
       if (modoFechaActual === 'rango') {
-        if (selectedDates.length >= 1) {
+        if (selectedDates.length === 1) {
           document.getElementById('fecha_inicio').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
-          document.getElementById('fecha_fin').value = selectedDates.length === 2 
-            ? flatpickr.formatDate(selectedDates[1], "Y-m-d") 
-            : document.getElementById('fecha_inicio').value;
+          document.getElementById('fecha_fin').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
+        } else if (selectedDates.length === 2) {
+          document.getElementById('fecha_inicio').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
+          document.getElementById('fecha_fin').value = flatpickr.formatDate(selectedDates[1], "Y-m-d");
         }
       }
     }
   });
-
-  document.getElementById('fecha_inicio').value = flatpickr.formatDate(hoy, "Y-m-d");
-  document.getElementById('fecha_fin').value = flatpickr.formatDate(hoy, "Y-m-d");
 }
 
 // -------------------------------------------------------------
@@ -217,7 +300,6 @@ async function guardarGuardia(e) {
   var dur = document.getElementById('duracion').value;
   var fra = document.getElementById('franja').value;
 
-  // Armamos el texto unificado que la base de datos y logica.js reconocen
   var modalidadFinal = '';
   if (dur === 'Semanal/Bloque') {
     modalidadFinal = 'Semanal/Bloque';
@@ -226,8 +308,7 @@ async function guardarGuardia(e) {
   } else if (dur === '18 hs') {
     modalidadFinal = '18 hs (' + fra.replace(' hs', '').trim() + ')';
   } else if (dur === '12 hs') {
-    var etiqueta12 = fra.indexOf('20:00') === 0 ? '12 hs Nocturna (20:00-08:00)' : '12 hs Diurna (08:00-20:00)';
-    modalidadFinal = etiqueta12;
+    modalidadFinal = fra.indexOf('20:00') === 0 ? '12 hs Nocturna (20:00-08:00)' : '12 hs Diurna (08:00-20:00)';
   } else if (dur === '6 hs') {
     modalidadFinal = '6 hs (' + fra.split(' ')[0] + '-' + fra.split(' ')[2] + ')';
   }
@@ -236,12 +317,15 @@ async function guardarGuardia(e) {
   var tipoVal = selTipo.value;
   var resp = document.getElementById('responsable').value.trim();
   var tel = document.getElementById('contacto').value.trim();
-  var intNum = document.getElementById('interno').value.trim();
-  var obs = document.getElementById('observaciones').value;
+  var intNum = document.getElementById('interno') ? document.getElementById('interno').value.trim() : '';
 
-  var selectedDates = fpFechas.selectedDates;
+  // Si el selector de observaciones está deshabilitado por el servicio, se fija en Normal Activa
+  var selObs = document.getElementById('observaciones');
+  var obs = (selObs && !selObs.disabled) ? selObs.value : 'Normal Activa';
+
+  var selectedDates = fpFechas ? fpFechas.selectedDates : [];
   if (!selectedDates || selectedDates.length === 0) {
-    alert('Por favor seleccione al menos una fecha.');
+    alert('Por favor seleccione una fecha o rango de cobertura.');
     return;
   }
 
@@ -262,7 +346,6 @@ async function guardarGuardia(e) {
       observaciones: obs
     });
   } else {
-    // Si eligió días múltiples, se genera un registro individual por cada día
     selectedDates.forEach(function(d) {
       var dStr = flatpickr.formatDate(d, "Y-m-d");
       registros.push({
@@ -287,10 +370,10 @@ async function guardarGuardia(e) {
     const { error } = await db.from('guardias').insert(registros);
     if (error) throw error;
 
-    alert(registros.length > 1 ? 'Se registraron las ' + registros.length + ' guardias con éxito.' : 'Guardia registrada con éxito.');
+    alert(registros.length > 1 ? 'Se registraron las ' + registros.length + ' guardias correctamente.' : 'Guardia registrada con éxito.');
     window.location.href = 'index.php';
   } catch (err) {
-    alert('Error al guardar: ' + (err.message || err));
+    alert('Error al registrar guardia: ' + (err.message || err));
     btnGuardar.disabled = false;
     btnGuardar.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Guardia';
   }
