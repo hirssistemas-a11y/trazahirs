@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
-$APP_VERSION = "v2.5.8";
+$APP_VERSION = "v2.6.7";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -145,7 +145,7 @@ $APP_VERSION = "v2.5.8";
         </div>
       </div>
 
-      <!-- Fila 5: Observaciones / Estado Operativo (Solo habilitado para áreas críticas) -->
+      <!-- Fila 5: Observaciones / Estado Operativo -->
       <div class="mb-4" id="bloqueObservaciones">
         <label for="observaciones" class="form-label text-light fw-bold small">Observaciones / Estado Operativo Especial</label>
         <select id="observaciones" class="form-select">
@@ -166,6 +166,12 @@ $APP_VERSION = "v2.5.8";
     </form>
   </div>
 </div>
+
+<!-- Variables inyectadas de la sesión de PHP -->
+<script>
+  const SESION_USUARIO = "<?php echo addslashes($USUARIO_LOGUEADO); ?>";
+  const SESION_NOMBRE  = "<?php echo addslashes($NOMBRE_SERVICIO); ?>";
+</script>
 
 <script src="js/config.js?v=<?php echo $APP_VERSION; ?>"></script>
 <script src="js/formulario.js?v=<?php echo $APP_VERSION; ?>"></script>
