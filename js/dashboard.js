@@ -102,7 +102,7 @@ function esGuardiaVigente(guardia, fechaReferencia) {
     return false;
   }
 
-  // Restricción visual de Ecodopler (15:00 a 07:00 hs)
+  // Restricción visual de Ecodopler (Visible de 15:00 a 07:00 hs)
   if (srv.indexOf('Ecodopler cardiaco') !== -1) {
     return (horaAhora >= 15 || horaAhora < 7);
   }
@@ -209,7 +209,7 @@ function obtenerInicioTurnoGuardia(guardia) {
     horaInicio = 2;
   } else if (srv === 'Tecnico de Imagenes') {
     horaInicio = 22;
-  } else if (srv === 'Sistemas' || srv.indexOf('Ecodopler cardiaco') !== -1) {
+  } else if (srv === 'Sistemas') {
     horaInicio = 15;
   } else if (srv === 'Electromedicina') {
     horaInicio = 13;
@@ -324,7 +324,7 @@ async function cargarDatos() {
     if (!db) throw new Error("Base de datos no configurada");
 
     if (Object.keys(referentesCache).length === 0) {
-      cargarReferentesDesdeBD(); // no bloquea el flujo principal
+      cargarReferentesDesdeBD();
     }
 
     var ahora = new Date();
@@ -668,7 +668,119 @@ function renderizarTablasEnVivo(guardias) {
 }
 
 // -------------------------------------------------------------
-// PANEL ADMINISTRADOR (SE EJECUTA SOLO AL ABRIRLO)
+// MAPEADO DE SESIÓN PARA "MI PLANILLA"
+// -------------------------------------------------------------
+function obtenerServiciosSegunUsuario() {
+  var user = (typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '').toLowerCase().trim();
+  var nom = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '').trim();
+
+  // Mapeo para Guardia Externa Adultos
+  if (user === 'guardia' || nom.toLowerCase() === 'guardia') {
+    return {
+      etiqueta: 'Guardia Externa Adultos',
+      servicios: ['Guardia externa Adultos']
+    };
+  }
+
+  // Mapeo para Pediatría y Neonatología
+  if (user === 'pediatria' || nom.toLowerCase() === 'pediatria') {
+    return {
+      etiqueta: 'Pediatría y Neonatología',
+      servicios: ['Guardia externa Pediatrica', 'Neonatologia']
+    };
+  }
+
+  // Mapeo para ECOIMAGENES (Ecodopler cardíaco y pediátrico)
+  if (user === 'ecoimagenes' || nom.toLowerCase() === 'ecoimagenes') {
+    return {
+      etiqueta: 'Ecoimágenes',
+      servicios: ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico']
+    };
+  }
+
+  // Resto de los servicios por defecto
+  var nombreFinal = nom || user || 'Mi Servicio';
+  return {
+    etiqueta: nombreFinal,
+    servicios: [nombreFinal]
+  };
+}
+
+function abrirModalMiPlanilla() {
+  if (!modalMiPlanillaInstance) {
+    modalMiPlanillaInstance = new bootstrap.Modal(document.getElementById('modalMiPlanilla'));
+  }
+  var hoy = new Date();
+  var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
+  var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+  var mapeo = obtenerServiciosSegunUsuario();
+  document.getElementById('miServicioNombre').value = mapeo.etiqueta;
+  document.getElementById('miPlanillaDesde').value = primerDia;
+  document.getElementById('miPlanillaHasta').value = ultimoDia;
+
+  modalMiPlanillaInstance.show();
+}
+
+async function exportarExcelMiServicio() {
+  var dDesde = document.getElementById('miPlanillaDesde').value;
+  var dHasta = document.getElementById('miPlanillaHasta').value;
+  var mapeo = obtenerServiciosSegunUsuario();
+
+  try {
+    let query = db.from('guardias').select('*');
+
+    if (mapeo.servicios.length > 1) {
+      query = query.in('servicio', mapeo.servicios);
+    } else {
+      query = query.ilike('servicio', '%' + mapeo.servicios[0] + '%');
+    }
+    
+    if (dDesde) query = query.gte('fecha_inicio', dDesde);
+    if (dHasta) query = query.lte('fecha_fin', dHasta);
+
+    const { data, error } = await query.order('fecha_inicio', { ascending: true });
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      alert('No se encontraron guardias registradas para ' + mapeo.etiqueta + ' en el rango de fechas seleccionado.');
+      return;
+    }
+
+    var filas = data.map(function(d) {
+      return {
+        "Servicio": d.servicio,
+        "Tipo": d.tipo,
+        "Modalidad": d.modalidad,
+        "Desde": d.fecha_inicio,
+        "Hasta": d.fecha_fin,
+        "Responsable": d.responsable,
+        "Contacto": d.contacto,
+        "Interno": d.interno || '-',
+        "Observaciones": d.observaciones || 'Normal'
+      };
+    });
+
+    var ws = XLSX.utils.json_to_sheet(filas);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mis_Guardias");
+
+    ws['!cols'] = [
+      { wch: 26 }, { wch: 10 }, { wch: 22 }, { wch: 12 }, 
+      { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 20 }
+    ];
+
+    var nombreArchivo = "Guardias_" + mapeo.etiqueta.replace(/[\s\/]+/g, '_') + "_" + dDesde + "_al_" + dHasta + ".xlsx";
+    XLSX.writeFile(wb, nombreArchivo);
+
+    if (modalMiPlanillaInstance) modalMiPlanillaInstance.hide();
+  } catch(e) {
+    alert("Error al descargar planilla: " + e.message);
+  }
+}
+
+// -------------------------------------------------------------
+// PANEL ADMINISTRADOR (SOLO CUANDO SE ACTIVA)
 // -------------------------------------------------------------
 function abrirModalLogin() {
   if (tokenAdmin) {
@@ -762,7 +874,7 @@ async function cargarAlertas() {
 
     var todosLosServicios = obtenerTodosLosServicios();
     huecosDetectadosGlobal = [];
-    var PASO_MS = 1800000; // 30 min
+    var PASO_MS = 1800000; // 30 minutos
 
     todosLosServicios.forEach(function(srv) {
       var huecoActual = null;
@@ -1215,53 +1327,6 @@ function exportarExcelLogs() {
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
   XLSX.writeFile(wb, "Logs_Auditoria_Guardias_HIRS_" + new Date().toISOString().slice(0, 10) + ".xlsx");
-}
-
-function abrirModalMiPlanilla() {
-  if (!modalMiPlanillaInstance) modalMiPlanillaInstance = new bootstrap.Modal(document.getElementById('modalMiPlanilla'));
-  var hoy = new Date();
-  document.getElementById('miServicioNombre').value = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '') || 'Mi Servicio';
-  document.getElementById('miPlanillaDesde').value = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
-  document.getElementById('miPlanillaHasta').value = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
-  modalMiPlanillaInstance.show();
-}
-
-async function exportarExcelMiServicio() {
-  var dDesde = document.getElementById('miPlanillaDesde').value;
-  var dHasta = document.getElementById('miPlanillaHasta').value;
-  var srv = document.getElementById('miServicioNombre').value;
-
-  try {
-    let q = db.from('guardias').select('*').ilike('servicio', '%' + srv + '%');
-    if (dDesde) q = q.gte('fecha_inicio', dDesde);
-    if (dHasta) q = q.lte('fecha_fin', dHasta);
-
-    const { data, error } = await q.order('fecha_inicio', { ascending: true });
-    if (error) throw error;
-    if (!data || data.length === 0) return alert('Sin datos en este rango.');
-
-    var filas = data.map(function(d) {
-      return {
-        "Servicio": d.servicio,
-        "Tipo": d.tipo,
-        "Modalidad": d.modalidad,
-        "Desde": d.fecha_inicio,
-        "Hasta": d.fecha_fin,
-        "Responsable": d.responsable,
-        "Contacto": d.contacto,
-        "Interno": d.interno || '-',
-        "Observaciones": d.observaciones || 'Normal'
-      };
-    });
-
-    var ws = XLSX.utils.json_to_sheet(filas);
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mis_Guardias");
-    XLSX.writeFile(wb, "Guardias_" + srv.replace(/[\s\/]+/g, '_') + ".xlsx");
-    if (modalMiPlanillaInstance) modalMiPlanillaInstance.hide();
-  } catch(e) {
-    alert("Error: " + e.message);
-  }
 }
 
 if (tokenAdmin) activarModoAdmin();
