@@ -3,7 +3,7 @@
 // =========================================================
 
 var CONFIG_SERVICIOS = {
-  // --- SERVICIOS CON FRACCIONAMIENTO TOTAL Y ESTADOS CRÍTICOS (Código Rojo / Restringida) ---
+  // --- SERVICIOS CON FRACCIONAMIENTO TOTAL Y ESTADOS CRÍTICOS ---
   "Guardia externa Adultos": { 
     tipo: "Activa", 
     fraccionable: true, 
@@ -41,7 +41,7 @@ var CONFIG_SERVICIOS = {
     nota: "Admite turnos de 6 hs, 12 hs, 18 hs y 24 hs." 
   },
 
-  // --- SERVICIOS MIXTOS (Planta de día / Pasiva de noche y fines de semana) ---
+  // --- SERVICIOS MIXTOS ---
   "Cardiologia/Unidad Coronaria": { 
     tipo: "Pasiva", 
     fraccionable: false, 
@@ -85,6 +85,22 @@ var CONFIG_SERVICIOS = {
     nota: "Pasiva lun a vie de 20:00 a 08:00 hs. Finde 24 hs." 
   },
 
+  // --- GUARDIAS PASIVAS ASISTENCIALES (Turno 24 hs - Visible en monitor 15:00 a 07:00 hs) ---
+  "Ecodopler cardiaco": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false, 
+    nota: "Guardia pasiva 24 hs (08:00 a 08:00 hs). Se visualiza en monitor de 15:00 a 07:00 hs." 
+  },
+  "Ecodopler cardiaco Pediatrico": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false, 
+    nota: "Guardia pasiva 24 hs (08:00 a 08:00 hs). Se visualiza en monitor de 15:00 a 07:00 hs." 
+  },
+
   // --- PASIVAS Y ACTIVAS ESTÁNDAR ---
   "Hemoterapia": { tipo: "Pasiva", fraccionable: false, permiteAlertaCritica: false, nota: "Guardia pasiva continua / semanal." },
   "Hemodinamia": { tipo: "Pasiva", fraccionable: false, permiteAlertaCritica: false, nota: "Guardia pasiva continua / semanal." },
@@ -109,36 +125,134 @@ document.addEventListener('DOMContentLoaded', function() {
   selTipo.addEventListener('change', alCambiarTipo);
   selDuracion.addEventListener('change', alCambiarDuracion);
 
-  if (selServicio.options.length > 1) {
-    selServicio.selectedIndex = 1;
-    alCambiarServicio();
-  }
-
   document.getElementById('formGuardia').addEventListener('submit', guardarGuardia);
 });
 
+// -------------------------------------------------------------
+// CONTROL DE ACCESO POR SESIÓN (SISTEMAS / PERSONAL / SERVICIOS)
+// -------------------------------------------------------------
+function obtenerServiciosPermitidosPorSesion(listaTotalServicios) {
+  var u = (typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '').toLowerCase().trim();
+  var n = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '').toLowerCase().trim();
+
+  // 1. Si no hay sesión (modo prueba/desarrollo), permitir todo
+  if (!u && !n) {
+    return { esSuper: true, servicios: listaTotalServicios };
+  }
+
+  // 2. Usuarios con permiso total: SISTEMAS y PERSONAL
+  if (u === 'sistemas' || n === 'sistemas' || u === 'personal' || n === 'personal' || u === 'admin' || n === 'admin') {
+    return { esSuper: true, servicios: listaTotalServicios };
+  }
+
+  // 3. Mapeo para ECOIMAGENES
+  if (u === 'ecoimagenes' || n.includes('ecoimagen') || n.includes('ecodopler') || n.includes('ecocardiograma')) {
+    return {
+      esSuper: false,
+      etiqueta: 'Ecoimágenes',
+      servicios: ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico']
+    };
+  }
+
+  // 4. Mapeo para PEDIATRÍA Y NEONATOLOGÍA
+  if (u === 'pediatria' || n.includes('pediatria')) {
+    return {
+      esSuper: false,
+      etiqueta: 'Pediatría y Neonatología',
+      servicios: ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria']
+    };
+  }
+
+  // 5. Mapeo para GUARDIA EXTERNA ADULTOS
+  if (u === 'guardia' || n.includes('guardia externa') || n.includes('guardia adultos')) {
+    return {
+      esSuper: false,
+      etiqueta: 'Guardia Externa Adultos',
+      servicios: ['Guardia externa Adultos']
+    };
+  }
+
+  // 6. Mapeo para TERAPIA INTENSIVA (UTI)
+  if (u === 'uti' || n.includes('terapia') || n.includes('intensiva')) {
+    return {
+      esSuper: false,
+      etiqueta: 'Terapia Intensiva',
+      servicios: ['Terapia Intensiva (UTI)', 'Terapia Intensiva Pediatrica (UTIP)']
+    };
+  }
+
+  // 7. Mapeo por coincidencia directa de nombre con el catálogo
+  var permitidos = listaTotalServicios.filter(function(srv) {
+    var srvNorm = srv.toLowerCase();
+    return srvNorm === u || srvNorm === n || srvNorm.includes(u) || (n && srvNorm.includes(n)) || (u && u.includes(srvNorm));
+  });
+
+  if (permitidos.length > 0) {
+    return {
+      esSuper: false,
+      etiqueta: permitidos[0],
+      servicios: permitidos
+    };
+  }
+
+  // Si no coincide ningún patrón, dejar completo por seguridad
+  return { esSuper: true, servicios: listaTotalServicios };
+}
+
 function poblarComboServicios() {
   var sel = document.getElementById('servicio');
-  sel.innerHTML = '<option value="">-- Seleccione un Servicio --</option>';
+  var lblAyuda = document.getElementById('servicioAyuda');
 
-  var lista = Object.keys(CONFIG_SERVICIOS);
-
+  var listaTotal = Object.keys(CONFIG_SERVICIOS);
   if (typeof SERVICIOS_CRITICOS !== 'undefined') {
-    SERVICIOS_CRITICOS.forEach(function(s) { if (!lista.includes(s)) lista.push(s); });
+    SERVICIOS_CRITICOS.forEach(function(s) { if (!listaTotal.includes(s)) listaTotal.push(s); });
   }
   if (typeof SERVICIOS_OPERATIVOS !== 'undefined') {
-    SERVICIOS_OPERATIVOS.forEach(function(s) { if (!lista.includes(s)) lista.push(s); });
+    SERVICIOS_OPERATIVOS.forEach(function(s) { if (!listaTotal.includes(s)) listaTotal.push(s); });
   }
+  listaTotal.sort();
 
-  lista.sort().forEach(function(s) {
-    sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
-  });
+  var info = obtenerServiciosPermitidosPorSesion(listaTotal);
+  sel.innerHTML = '';
+
+  if (info.esSuper) {
+    // Modo Administrador / Personal / Sistemas: lista completa disponible
+    sel.innerHTML += '<option value="">-- Seleccione un Servicio --</option>';
+    info.servicios.forEach(function(s) {
+      sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
+    });
+    if (sel.options.length > 1) {
+      sel.selectedIndex = 1;
+      alCambiarServicio();
+    }
+  } else {
+    // Modo restringido por cuenta de usuario
+    if (info.servicios.length === 1) {
+      var unico = info.servicios[0];
+      sel.innerHTML += '<option value="' + unico + '">' + unico + '</option>';
+      sel.value = unico;
+      alCambiarServicio();
+      if (lblAyuda) {
+        lblAyuda.innerHTML = '<i class="bi bi-person-check-fill me-1"></i> Servicio asignado a su cuenta: <strong>' + unico + '</strong>';
+      }
+    } else {
+      // Subservicios agrupados (ej. Ecoimágenes o Pediatría)
+      sel.innerHTML += '<option value="">-- Seleccione Servicio (' + (info.etiqueta || 'Asignado') + ') --</option>';
+      info.servicios.forEach(function(s) {
+        sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
+      });
+      sel.selectedIndex = 1;
+      alCambiarServicio();
+      if (lblAyuda) {
+        lblAyuda.innerHTML = '<i class="bi bi-info-circle me-1"></i> Mostrando servicios autorizados para <strong>' + (info.etiqueta || 'su área') + '</strong>.';
+      }
+    }
+  }
 }
 
 // -------------------------------------------------------------
 // CONTROL ESTRICTO DE SELECTORES Y ESTADO OPERATIVO
 // -------------------------------------------------------------
-
 function alCambiarServicio() {
   var srv = document.getElementById('servicio').value;
   var conf = CONFIG_SERVICIOS[srv] || { tipo: "Activa", fraccionable: false, permiteAlertaCritica: false, nota: "" };
@@ -148,9 +262,11 @@ function alCambiarServicio() {
   var selObs = document.getElementById('observaciones');
   var obsAyuda = document.getElementById('observacionesAyuda');
 
-  lblNota.innerText = conf.nota || "";
+  if (conf.nota) {
+    lblNota.innerText = conf.nota;
+  }
 
-  // 1. Tipo de Guardia (Bloqueado o editable)
+  // 1. Tipo de Guardia
   selTipo.value = conf.tipo;
   if (conf.tipoBloqueado) {
     selTipo.setAttribute('disabled', 'disabled');
@@ -158,7 +274,7 @@ function alCambiarServicio() {
     selTipo.removeAttribute('disabled');
   }
 
-  // 2. Control de Observaciones (Código Rojo / Guardia Restringida)
+  // 2. Control de Observaciones
   if (conf.permiteAlertaCritica) {
     selObs.removeAttribute('disabled');
     obsAyuda.innerText = "Este servicio permite reportar contingencias operativas.";
@@ -227,7 +343,6 @@ function alCambiarDuracion() {
 // -------------------------------------------------------------
 // MANEJO DE FECHAS (FLATPICKR RANGE SEGURO)
 // -------------------------------------------------------------
-
 function cambiarModoFecha(modo) {
   modoFechaActual = modo;
   var bRango = document.getElementById('btnModoRango');
@@ -258,10 +373,12 @@ function inicializarFlatpickr() {
   document.getElementById('fecha_fin').value = '';
 
   fpFechas = flatpickr(inputFechas, {
-    mode: modoFechaActual,
+    mode: modoFechaActual === 'rango' ? 'range' : 'multiple',
     dateFormat: "Y-m-d",
     altInput: true,
     altFormat: "d/m/Y",
+    allowInput: false,
+    clickOpens: true,
     locale: {
       firstDayOfWeek: 1,
       weekdays: {
@@ -274,15 +391,20 @@ function inicializarFlatpickr() {
       },
       rangeSeparator: " al "
     },
-    // No forzamos defaultDate duplicado para permitir selección limpia de 2 clics
+    onClose: function(selectedDates) {
+      if (modoFechaActual === 'rango' && selectedDates.length >= 1) {
+        document.getElementById('fecha_inicio').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
+        document.getElementById('fecha_fin').value = flatpickr.formatDate(selectedDates[selectedDates.length - 1], "Y-m-d");
+      }
+    },
     onChange: function(selectedDates) {
       if (modoFechaActual === 'rango') {
         if (selectedDates.length === 1) {
           document.getElementById('fecha_inicio').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
           document.getElementById('fecha_fin').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
-        } else if (selectedDates.length === 2) {
+        } else if (selectedDates.length >= 2) {
           document.getElementById('fecha_inicio').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
-          document.getElementById('fecha_fin').value = flatpickr.formatDate(selectedDates[1], "Y-m-d");
+          document.getElementById('fecha_fin').value = flatpickr.formatDate(selectedDates[selectedDates.length - 1], "Y-m-d");
         }
       }
     }
@@ -292,10 +414,10 @@ function inicializarFlatpickr() {
 // -------------------------------------------------------------
 // GUARDADO EN SUPABASE
 // -------------------------------------------------------------
-
 async function guardarGuardia(e) {
   e.preventDefault();
 
+  var srv = document.getElementById('servicio').value;
   var selTipo = document.getElementById('tipo');
   var dur = document.getElementById('duracion').value;
   var fra = document.getElementById('franja').value;
@@ -313,13 +435,11 @@ async function guardarGuardia(e) {
     modalidadFinal = '6 hs (' + fra.split(' ')[0] + '-' + fra.split(' ')[2] + ')';
   }
 
-  var srv = document.getElementById('servicio').value;
   var tipoVal = selTipo.value;
   var resp = document.getElementById('responsable').value.trim();
   var tel = document.getElementById('contacto').value.trim();
   var intNum = document.getElementById('interno') ? document.getElementById('interno').value.trim() : '';
 
-  // Si el selector de observaciones está deshabilitado por el servicio, se fija en Normal Activa
   var selObs = document.getElementById('observaciones');
   var obs = (selObs && !selObs.disabled) ? selObs.value : 'Normal Activa';
 
@@ -332,8 +452,11 @@ async function guardarGuardia(e) {
   var registros = [];
 
   if (modoFechaActual === 'rango') {
-    var fIni = document.getElementById('fecha_inicio').value;
-    var fFin = document.getElementById('fecha_fin').value || fIni;
+    var fIni = flatpickr.formatDate(selectedDates[0], "Y-m-d");
+    var fFin = selectedDates.length > 1 
+      ? flatpickr.formatDate(selectedDates[selectedDates.length - 1], "Y-m-d") 
+      : fIni;
+
     registros.push({
       servicio: srv,
       tipo: tipoVal,
