@@ -85,7 +85,7 @@ var CONFIG_SERVICIOS = {
     nota: "Pasiva lun a vie de 20:00 a 08:00 hs. Finde 24 hs." 
   },
 
-  // --- GUARDIAS PASIVAS ASISTENCIALES (Turno 24 hs - Visible en monitor 15:00 a 07:00 hs) ---
+  // --- GUARDIAS PASIVAS ASISTENCIALES ---
   "Ecodopler cardiaco": { 
     tipo: "Pasiva", 
     fraccionable: false, 
@@ -105,6 +105,7 @@ var CONFIG_SERVICIOS = {
   "Hemoterapia": { tipo: "Pasiva", fraccionable: false, permiteAlertaCritica: false, nota: "Guardia pasiva continua / semanal." },
   "Hemodinamia": { tipo: "Pasiva", fraccionable: false, permiteAlertaCritica: false, nota: "Guardia pasiva continua / semanal." },
   "Anestesista": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Pasiva continua / Refuerzo activo." },
+  "Tecnico de Anestesia": { tipo: "Activa", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Guardia operativa de técnicos." },
   "Cirugia General": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Pasiva continua / Bloques 24 hs." },
   "Traumatologia": { tipo: "Pasiva", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Pasiva continua / Bloques 24 hs." },
   "Laboratorio": { tipo: "Activa", fraccionable: false, tipoEditable: true, permiteAlertaCritica: false, nota: "Guardia activa de planta 24 hs." }
@@ -135,17 +136,53 @@ function obtenerServiciosPermitidosPorSesion(listaTotalServicios) {
   var u = (typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '').toLowerCase().trim();
   var n = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '').toLowerCase().trim();
 
-  // 1. Si no hay sesión (modo prueba/desarrollo), permitir todo
+  // 1. Sin sesión (desarrollo o prueba local)
   if (!u && !n) {
     return { esSuper: true, servicios: listaTotalServicios };
   }
 
-  // 2. Usuarios con permiso total: SISTEMAS y PERSONAL
+  // 2. Superusuarios: SISTEMAS y PERSONAL
   if (u === 'sistemas' || n === 'sistemas' || u === 'personal' || n === 'personal' || u === 'admin' || n === 'admin') {
     return { esSuper: true, servicios: listaTotalServicios };
   }
 
-  // 3. Mapeo para ECOIMAGENES
+  // 3. ANESTESIA (Médicos anestesistas + Técnicos de anestesia)
+  if (u === 'anestesia' || n.includes('anestesia') || n.includes('anestesista')) {
+    var serviciosAnestesia = listaTotalServicios.filter(function(srv) {
+      var s = srv.toLowerCase();
+      return s.includes('anestesia') || s.includes('anestesista');
+    });
+
+    if (serviciosAnestesia.length === 0) {
+      serviciosAnestesia = ['Anestesista', 'Tecnico de Anestesia'];
+    }
+
+    return {
+      esSuper: false,
+      etiqueta: 'Anestesiología',
+      servicios: serviciosAnestesia
+    };
+  }
+
+  // 4. PEDIATRÍA (Pediatría en planta, Guardia externa y Neonatología)
+  if (u === 'pediatria' || n.includes('pediatria')) {
+    var serviciosPediatria = listaTotalServicios.filter(function(srv) {
+      var s = srv.toLowerCase();
+      return s.includes('pediatri') || s.includes('neonatolog');
+    });
+
+    if (serviciosPediatria.length === 0) {
+      serviciosPediatria = ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria'];
+    }
+
+    return {
+      esSuper: false,
+      etiqueta: 'Pediatría y Neonatología',
+      servicios: serviciosPediatria
+    };
+  }
+
+  // 5. ECOIMÁGENES (Cardíaco y Pediátrico)
   if (u === 'ecoimagenes' || n.includes('ecoimagen') || n.includes('ecodopler') || n.includes('ecocardiograma')) {
     return {
       esSuper: false,
@@ -154,16 +191,7 @@ function obtenerServiciosPermitidosPorSesion(listaTotalServicios) {
     };
   }
 
-  // 4. Mapeo para PEDIATRÍA Y NEONATOLOGÍA
-  if (u === 'pediatria' || n.includes('pediatria')) {
-    return {
-      esSuper: false,
-      etiqueta: 'Pediatría y Neonatología',
-      servicios: ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria']
-    };
-  }
-
-  // 5. Mapeo para GUARDIA EXTERNA ADULTOS
+  // 6. GUARDIA EXTERNA ADULTOS
   if (u === 'guardia' || n.includes('guardia externa') || n.includes('guardia adultos')) {
     return {
       esSuper: false,
@@ -172,7 +200,7 @@ function obtenerServiciosPermitidosPorSesion(listaTotalServicios) {
     };
   }
 
-  // 6. Mapeo para TERAPIA INTENSIVA (UTI)
+  // 7. TERAPIA INTENSIVA (UTI y UTIP)
   if (u === 'uti' || n.includes('terapia') || n.includes('intensiva')) {
     return {
       esSuper: false,
@@ -181,7 +209,7 @@ function obtenerServiciosPermitidosPorSesion(listaTotalServicios) {
     };
   }
 
-  // 7. Mapeo por coincidencia directa de nombre con el catálogo
+  // 8. Servicios individuales por coincidencia general
   var permitidos = listaTotalServicios.filter(function(srv) {
     var srvNorm = srv.toLowerCase();
     return srvNorm === u || srvNorm === n || srvNorm.includes(u) || (n && srvNorm.includes(n)) || (u && u.includes(srvNorm));
@@ -195,7 +223,7 @@ function obtenerServiciosPermitidosPorSesion(listaTotalServicios) {
     };
   }
 
-  // Si no coincide ningún patrón, dejar completo por seguridad
+  // Respaldo
   return { esSuper: true, servicios: listaTotalServicios };
 }
 
@@ -216,7 +244,6 @@ function poblarComboServicios() {
   sel.innerHTML = '';
 
   if (info.esSuper) {
-    // Modo Administrador / Personal / Sistemas: lista completa disponible
     sel.innerHTML += '<option value="">-- Seleccione un Servicio --</option>';
     info.servicios.forEach(function(s) {
       sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
@@ -226,7 +253,6 @@ function poblarComboServicios() {
       alCambiarServicio();
     }
   } else {
-    // Modo restringido por cuenta de usuario
     if (info.servicios.length === 1) {
       var unico = info.servicios[0];
       sel.innerHTML += '<option value="' + unico + '">' + unico + '</option>';
@@ -236,7 +262,6 @@ function poblarComboServicios() {
         lblAyuda.innerHTML = '<i class="bi bi-person-check-fill me-1"></i> Servicio asignado a su cuenta: <strong>' + unico + '</strong>';
       }
     } else {
-      // Subservicios agrupados (ej. Ecoimágenes o Pediatría)
       sel.innerHTML += '<option value="">-- Seleccione Servicio (' + (info.etiqueta || 'Asignado') + ') --</option>';
       info.servicios.forEach(function(s) {
         sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
@@ -251,7 +276,7 @@ function poblarComboServicios() {
 }
 
 // -------------------------------------------------------------
-// CONTROL ESTRICTO DE SELECTORES Y ESTADO OPERATIVO
+// CONTROL DE SELECTORES Y ESTADO OPERATIVO
 // -------------------------------------------------------------
 function alCambiarServicio() {
   var srv = document.getElementById('servicio').value;
@@ -266,7 +291,6 @@ function alCambiarServicio() {
     lblNota.innerText = conf.nota;
   }
 
-  // 1. Tipo de Guardia
   selTipo.value = conf.tipo;
   if (conf.tipoBloqueado) {
     selTipo.setAttribute('disabled', 'disabled');
@@ -274,7 +298,6 @@ function alCambiarServicio() {
     selTipo.removeAttribute('disabled');
   }
 
-  // 2. Control de Observaciones
   if (conf.permiteAlertaCritica) {
     selObs.removeAttribute('disabled');
     obsAyuda.innerText = "Este servicio permite reportar contingencias operativas.";
@@ -284,7 +307,6 @@ function alCambiarServicio() {
     obsAyuda.innerText = "Servicio con estado operativo estándar (Normal Activa).";
   }
 
-  // 3. Duración y Franjas
   actualizarSelectorDuracion(conf);
 }
 
@@ -341,7 +363,7 @@ function alCambiarDuracion() {
 }
 
 // -------------------------------------------------------------
-// MANEJO DE FECHAS (FLATPICKR RANGE SEGURO)
+// MANEJO DE FECHAS
 // -------------------------------------------------------------
 function cambiarModoFecha(modo) {
   modoFechaActual = modo;
