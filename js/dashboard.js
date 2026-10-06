@@ -697,6 +697,14 @@ function obtenerServiciosSegunUsuario() {
       servicios: ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico']
     };
   }
+  
+  // Mapeo para Anestesia (Anestesista y Técnicos)
+  if (user === 'anestesia' || nom.toLowerCase().includes('anestesia')) {
+    return {
+      etiqueta: 'Anestesiología',
+      servicios: ['Anestesista', 'Tecnico de Anestesia']
+    };
+  }
 
   // Resto de los servicios por defecto
   var nombreFinal = nom || user || 'Mi Servicio';
