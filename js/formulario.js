@@ -61,4 +61,13 @@ var CONFIG_SERVICIOS = {
     fraccionable: false, 
     tipoBloqueado: true, 
     permiteAlertaCritica: false,
-    nota: "Pasiva lun a vie de 13:00
+    nota: "Pasiva lun a vie de 13:00 a 08:00 hs. Finde 24 hs." 
+  },
+  "Farmacia": { 
+    tipo: "Pasiva", 
+    fraccionable: false, 
+    tipoBloqueado: true, 
+    permiteAlertaCritica: false,
+    nota: "Pasiva lun a vie de 16:00 a 08:00 hs. Finde 24 hs." 
+  },
+  "Tecnico de Imagen
