@@ -1,5 +1,5 @@
 // ==========================================
-// CONTROLADOR DEL MONITOR EN VIVO (HIRS)
+// CONTROLADOR DEL MONITOR EN VIVO (HIRS) - OPTIMIZADO
 // ==========================================
 
 var tokenAdmin = sessionStorage.getItem("admin_token") || null;
@@ -9,6 +9,8 @@ var guardiasEnVivo = [];
 var guardiasIncumplidasLista = [];
 var logsAuditoriaLista = [];
 var referentesCache = {};
+var referentesCargados = false;
+var limpiezaUTIEjecutada = false;
 var huecosDetectadosGlobal = [];
 
 var modalInstance = null;
@@ -24,33 +26,45 @@ var cargandoDatos = false;
 var segundosDesdeUltimaSync = 0;
 var filtroCategoriaActual = 'todas';
 var INTERVALO_REFRESCO_SEG = 30;
+var timerFiltroHistorial = null;
+
+function normalizarTexto(t) {
+  return String(t || '')
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
 
 function actualizarReloj() {
+  if (document.hidden) return; // No gastar CPU si la pestaña está minimizada
+
   var now = new Date();
-  document.getElementById('reloj').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' | ' + now.toLocaleDateString();
+  var elReloj = document.getElementById('reloj');
+  if (elReloj) {
+    elReloj.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' | ' + now.toLocaleDateString();
+  }
   
   segundosDesdeUltimaSync++;
   var elStatus = document.getElementById('syncStatus');
-  if (cargandoDatos) {
-    elStatus.innerHTML = '<i class="bi bi-arrow-repeat text-warning"></i> Sincronizando datos...';
-  } else {
-    var prox = INTERVALO_REFRESCO_SEG - segundosDesdeUltimaSync;
-    elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Actualizado hace ' + segundosDesdeUltimaSync + 's (próximo en ' + (prox > 0 ? prox : 0) + 's)';
+  if (elStatus) {
+    if (cargandoDatos) {
+      elStatus.innerHTML = '<i class="bi bi-arrow-repeat text-warning"></i> Sincronizando datos...';
+    } else {
+      var prox = INTERVALO_REFRESCO_SEG - segundosDesdeUltimaSync;
+      elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Actualizado hace ' + segundosDesdeUltimaSync + 's (próximo en ' + (prox > 0 ? prox : 0) + 's)';
+    }
   }
 
   if (segundosDesdeUltimaSync >= INTERVALO_REFRESCO_SEG) {
-    cargarDatos();
+    cargarDatos(false);
   }
 }
 setInterval(actualizarReloj, 1000);
 actualizarReloj();
 
 function forzarRefresco() {
-  cargarDatos();
-  if (tokenAdmin) {
-    cargarHistorial();
-    cargarAlertas();
-  }
+  cargarDatos(true);
 }
 
 function filtrarCategoria(cat) {
@@ -70,16 +84,69 @@ function filtrarCategoria(cat) {
   renderizarTablasEnVivo(guardiasEnVivo);
 }
 
-async function cargarDatos() {
+// -------------------------------------------------------------
+// LIMPIEZA AUTOMÁTICA DE "UTI" VIEJA Y GUARDIAS DUPLICADAS
+// -------------------------------------------------------------
+async function limpiarUTIDuplicadasEnBD() {
+  if (limpiezaUTIEjecutada || !db) return;
+  limpiezaUTIEjecutada = true;
+
+  try {
+    // 1. Borrar todas las guardias que quedaron con el nombre viejo "UTI"
+    await db.from('guardias').delete().eq('servicio', 'UTI');
+
+    // 2. Buscar si hay duplicadas exactas dentro de "Terapia Intensiva (UTI)" y eliminar el duplicado
+    const { data: utiRows } = await db
+      .from('guardias')
+      .select('id, servicio, fecha_inicio, fecha_fin, modalidad, responsable')
+      .eq('servicio', 'Terapia Intensiva (UTI)')
+      .order('id', { ascending: true });
+
+    if (utiRows && utiRows.length > 1) {
+      var vistos = new Set();
+      var idsDuplicados = [];
+
+      utiRows.forEach(function(r) {
+        var clave = [
+          r.servicio,
+          r.fecha_inicio,
+          r.fecha_fin,
+          (r.modalidad || '').trim().toLowerCase(),
+          (r.responsable || '').trim().toLowerCase()
+        ].join('|');
+
+        if (vistos.has(clave)) {
+          idsDuplicados.push(r.id);
+        } else {
+          vistos.add(clave);
+        }
+      });
+
+      if (idsDuplicados.length > 0) {
+        await db.from('guardias').delete().in('id', idsDuplicados);
+      }
+    }
+  } catch (e) {
+    console.warn("Aviso en limpieza automática de UTI:", e);
+  }
+}
+
+async function cargarDatos(forzarTodo) {
   if (cargandoDatos) return;
   cargandoDatos = true;
   var elStatus = document.getElementById('syncStatus');
-  if (elStatus) elStatus.innerHTML = '<i class="bi bi-arrow-repeat spin text-warning"></i> Actualizando...';
+  if (elStatus) elStatus.innerHTML = '<i class="bi bi-arrow-repeat text-warning"></i> Actualizando...';
 
   try {
     if (!db) throw new Error("Base de datos no configurada en js/config.js");
 
-    await cargarReferentesDesdeBD();
+    // Ejecutar limpieza de "UTI" vieja y cargar referentes solo la primera vez o al forzar
+    if (!limpiezaUTIEjecutada) {
+      await limpiarUTIDuplicadasEnBD();
+    }
+    if (!referentesCargados || forzarTodo) {
+      await cargarReferentesDesdeBD();
+    }
 
     var ahora = new Date();
     var ayer = new Date(ahora);
@@ -89,17 +156,26 @@ async function cargarDatos() {
     const { data, error } = await db
       .from('guardias')
       .select('*')
+      .neq('servicio', 'UTI')
       .gte('fecha_fin', ayerStr)
       .order('fecha_inicio', { ascending: true });
 
     if (error) throw error;
 
-    todasLasGuardiasRaw = (data || []).map(function(r) {
-      // Si hubiera registros viejos guardados como "UTI", se normalizan a "Terapia Intensiva (UTI)"
-      var srvNormalizado = (r.servicio && r.servicio.trim() === 'UTI') ? 'Terapia Intensiva (UTI)' : r.servicio;
-      return {
+    todasLasGuardiasRaw = [];
+    var vistosEnMemoria = new Set();
+
+    (data || []).forEach(function(r) {
+      if (!r.servicio || r.servicio.trim() === 'UTI') return;
+
+      // Evitar mostrar filas idénticas duplicadas en pantalla
+      var claveUnica = r.servicio + '|' + r.fecha_inicio + '|' + r.fecha_fin + '|' + (r.modalidad || '') + '|' + (r.responsable || '').trim().toLowerCase();
+      if (vistosEnMemoria.has(claveUnica)) return;
+      vistosEnMemoria.add(claveUnica);
+
+      var obj = {
         id: r.id,
-        servicio: srvNormalizado,
+        servicio: r.servicio,
         tipo: r.tipo,
         modalidad: r.modalidad,
         fechaInicio: r.fecha_inicio,
@@ -109,6 +185,10 @@ async function cargarDatos() {
         interno: r.interno,
         observaciones: r.observaciones ? String(r.observaciones).trim() : null
       };
+      if (typeof asegurarCacheFechasGuardia === 'function') {
+        asegurarCacheFechasGuardia(obj);
+      }
+      todasLasGuardiasRaw.push(obj);
     });
 
     guardiasEnVivo = todasLasGuardiasRaw.filter(function(g) {
@@ -120,16 +200,19 @@ async function cargarDatos() {
     segundosDesdeUltimaSync = 0;
     if (elStatus) elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Conectado';
 
+    if (tokenAdmin) {
+      // Reutilizamos todasLasGuardiasRaw para las alertas de 48 hs (sin hacer otra consulta a Supabase)
+      cargarAlertas();
+      if (forzarTodo || historialCompleto.length === 0) {
+        cargarHistorial();
+      }
+    }
+
   } catch(err) {
     console.error("Error al obtener guardias:", err);
     cargandoDatos = false;
     segundosDesdeUltimaSync = 0;
     if (elStatus) elStatus.innerHTML = '<i class="bi bi-exclamation-triangle text-danger"></i> ' + (err.message || 'Error de conexión');
-  }
-
-  if (tokenAdmin) {
-    cargarHistorial();
-    cargarAlertas();
   }
 }
 
@@ -144,41 +227,33 @@ async function cargarReferentesDesdeBD() {
           contacto: item.contacto
         };
       });
+      referentesCargados = true;
     }
   } catch (e) {
     console.warn("No se pudo cargar referentes_servicios:", e);
   }
 }
 
-function buscarProximaGuardia(servicioActual, idActual, fechaFinTurnoActual) {
-  var ahoraTimestamp = new Date().getTime();
-  var umbralTimestamp = ahoraTimestamp;
+function buscarProximaGuardia(servicioActual, idActual) {
+  var umbralTimestamp = Date.now() - (5 * 60 * 1000);
+  var mejorCandidata = null;
+  var mejorTs = Infinity;
 
-  var candidatas = todasLasGuardiasRaw.filter(function(g) {
-    if (g.servicio !== servicioActual || g.id === idActual) return false;
+  for (var i = 0; i < todasLasGuardiasRaw.length; i++) {
+    var g = todasLasGuardiasRaw[i];
+    if (g.servicio !== servicioActual || g.id === idActual) continue;
 
-    var inicioTurno = typeof obtenerInicioTurnoGuardia === 'function' 
-      ? obtenerInicioTurnoGuardia(g) 
-      : null;
+    var inicioTurno = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(g) : null;
+    if (!inicioTurno) continue;
 
-    if (!inicioTurno) {
-      var fIniStr = String(g.fechaInicio || '').slice(0, 10);
-      var p = fIniStr.split('-');
-      inicioTurno = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10), 8, 0, 0, 0);
+    var ts = inicioTurno.getTime();
+    if (ts >= umbralTimestamp && ts < mejorTs) {
+      mejorTs = ts;
+      mejorCandidata = g;
     }
+  }
 
-    return inicioTurno.getTime() >= (umbralTimestamp - 5 * 60 * 1000);
-  });
-
-  if (candidatas.length === 0) return null;
-
-  candidatas.sort(function(a, b) {
-    var iniA = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(a) : new Date(a.fechaInicio);
-    var iniB = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(b) : new Date(b.fechaInicio);
-    return iniA.getTime() - iniB.getTime();
-  });
-
-  return candidatas[0];
+  return mejorCandidata;
 }
 
 function normalizarWhatsApp(tel) {
@@ -273,10 +348,8 @@ async function confirmarReporteIncumplimiento() {
         motivo: motivoFinal
       }]);
     }
-
     if (modalConfirmarInstance) modalConfirmarInstance.hide();
     mostrarContactoReferente(g.servicio);
-
   } catch (err) {
     console.error("Error al registrar incidente:", err);
     if (modalConfirmarInstance) modalConfirmarInstance.hide();
@@ -298,15 +371,17 @@ function mostrarContactoReferente(servicio) {
   document.getElementById('repNombre').innerText = ref.nombre || ref.nombre_referente;
 
   var cont = document.getElementById('repAccionesContacto');
-  cont.innerHTML = '';
+  var htmlBotones = [];
 
   var limpio = String(ref.contacto || '').trim();
   var wsp = normalizarWhatsApp(limpio);
 
   if (limpio) {
-    cont.innerHTML += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel fs-6 py-1 px-3">' +
-                        '<i class="bi bi-telephone-fill me-1"></i> Llamar: ' + limpio +
-                      '</a>';
+    htmlBotones.push(
+      '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel fs-6 py-1 px-3">' +
+        '<i class="bi bi-telephone-fill me-1"></i> Llamar: ' + limpio +
+      '</a>'
+    );
   }
 
   if (wsp) {
@@ -314,10 +389,14 @@ function mostrarContactoReferente(servicio) {
     var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     var urlWsp = esMovil ? 'https://wa.me/' + wsp + '?text=' + msg : 'https://web.whatsapp.com/send?phone=' + wsp + '&text=' + msg;
 
-    cont.innerHTML += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp fs-6 py-1 px-3">' +
-                        '<i class="bi bi-whatsapp me-1"></i> WhatsApp' +
-                      '</a>';
+    htmlBotones.push(
+      '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp fs-6 py-1 px-3">' +
+        '<i class="bi bi-whatsapp me-1"></i> WhatsApp' +
+      '</a>'
+    );
   }
+
+  cont.innerHTML = htmlBotones.join('');
 
   if (!modalContactoInstance) {
     modalContactoInstance = new bootstrap.Modal(document.getElementById('modalContactoReferente'));
@@ -325,21 +404,23 @@ function mostrarContactoReferente(servicio) {
   modalContactoInstance.show();
 }
 
+// Renderizado en memoria con 1 sola escritura DOM
 function renderizarTablasEnVivo(guardias) {
   var tAct = document.getElementById('tablaActivas');
   var tPas = document.getElementById('tablaPasivas');
-  tAct.innerHTML = '';
-  tPas.innerHTML = '';
 
-  var activasCount = 0;
-  var pasivasCount = 0;
+  var filasActivas = [];
+  var filasPasivas = [];
   var listaOperativos = (typeof SERVICIOS_OPERATIVOS !== 'undefined') ? SERVICIOS_OPERATIVOS : [];
   var ahora = new Date();
+  var ahoraMs = ahora.getTime();
+  var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
 
-  guardias.forEach(function(g, index) {
+  for (var index = 0; index < guardias.length; index++) {
+    var g = guardias[index];
     var esOperativo = listaOperativos.includes(g.servicio);
-    if (filtroCategoriaActual === 'profesional' && esOperativo) return;
-    if (filtroCategoriaActual === 'operativa' && !esOperativo) return;
+    if (filtroCategoriaActual === 'profesional' && esOperativo) continue;
+    if (filtroCategoriaActual === 'operativa' && !esOperativo) continue;
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
 
@@ -357,17 +438,15 @@ function renderizarTablasEnVivo(guardias) {
     }
 
     var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
-    var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahora.getTime()) : 0;
+    var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahoraMs) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
 
-    var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
     var mostrarDesplegable = (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS);
-
     var btnDesplegable = '';
     var filaCollapseHtml = '';
 
     if (mostrarDesplegable) {
-      var prox = buscarProximaGuardia(g.servicio, g.id, fechaFinTurno);
+      var prox = buscarProximaGuardia(g.servicio, g.id);
       var contenidoDesplegable = '';
       var btnClaseAlerta = 'btn-outline-secondary';
       var borderClaseCollapse = 'border-secondary';
@@ -437,52 +516,62 @@ function renderizarTablasEnVivo(guardias) {
     '</tr>' + filaCollapseHtml;
 
     if (g.tipo === 'Activa') {
-      tAct.innerHTML += row;
-      activasCount++;
+      filasActivas.push(row);
     } else {
-      tPas.innerHTML += row;
-      pasivasCount++;
+      filasPasivas.push(row);
     }
-  });
+  }
 
-  if (activasCount === 0) {
-    tAct.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias activas para la vista seleccionada.</td></tr>';
-  }
-  if (pasivasCount === 0) {
-    tPas.innerHTML = '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias pasivas a demanda para la vista seleccionada.</td></tr>';
-  }
+  tAct.innerHTML = filasActivas.length > 0
+    ? filasActivas.join('')
+    : '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias activas para la vista seleccionada.</td></tr>';
+
+  tPas.innerHTML = filasPasivas.length > 0
+    ? filasPasivas.join('')
+    : '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias pasivas a demanda para la vista seleccionada.</td></tr>';
 }
 
+// -------------------------------------------------------------
+// MI PLANILLA (COMPATIBLE CON UTI Y TODOS LOS SERVICIOS)
+// -------------------------------------------------------------
 function obtenerServiciosSegunUsuario() {
-  var user = (typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '').toLowerCase().trim();
-  var nom = (typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '').trim();
+  var u = normalizarTexto(typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '');
+  var n = normalizarTexto(typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '');
+  var catalogo = obtenerTodosLosServicios();
 
-  if (user === 'guardia' || nom.toLowerCase() === 'guardia') {
-    return {
-      etiqueta: 'Guardia Externa Adultos',
-      servicios: ['Guardia externa Adultos']
-    };
+  // Si es admin/sistemas/dirección/personal o sesión vacía, puede elegir cualquier servicio
+  if (!u || u === 'sistemas' || u === 'admin' || u === 'personal' || u === 'direccion' || n.includes('sistemas') || n.includes('administracion')) {
+    return catalogo;
   }
 
-  if (user === 'pediatria' || nom.toLowerCase() === 'pediatria') {
-    return {
-      etiqueta: 'Pediatría y Neonatología',
-      servicios: ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria', 'Terapia Intensiva Pediatrica (UTIP)']
-    };
+  if (u === 'guardia' || n === 'guardia') {
+    return ['Guardia externa Adultos'];
+  }
+  if (u.includes('uti') || n.includes('uti') || u.includes('terapia') || n.includes('terapia')) {
+    return ['Terapia Intensiva (UTI)', 'Terapia Intensiva Pediatrica (UTIP)'];
+  }
+  if (u.includes('pediatria') || n.includes('pediatria') || u.includes('neo') || n.includes('neo')) {
+    return ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria', 'Terapia Intensiva Pediatrica (UTIP)'];
+  }
+  if (u.includes('ecoimagenes') || n.includes('ecoimagenes') || u.includes('ecodoppler')) {
+    return ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico', 'Ecografia'];
+  }
+  if (u.includes('anestesia') || n.includes('anestesia')) {
+    return ['Anestesista', 'Tecnico de Anestesia'];
+  }
+  if (u.includes('imagenes') || u.includes('rayos') || n.includes('imagenes')) {
+    return ['Tecnico de Imagenes', 'RX Quirofano', 'Ecografia'];
+  }
+  if (u.includes('cardio') || n.includes('cardio') || u.includes('coronaria') || n.includes('uco')) {
+    return ['Cardiologia/Unidad Coronaria'];
   }
 
-  if (user.includes('ecoimagenes') || nom.toLowerCase().includes('ecoimagenes')) {
-    return {
-      etiqueta: 'Ecoimágenes / Ecodoppler',
-      servicios: ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico', 'Ecografia']
-    };
-  }
+  var coincidencias = catalogo.filter(function(s) {
+    var sNorm = normalizarTexto(s);
+    return (u && sNorm.includes(u)) || (n && sNorm.includes(n));
+  });
 
-  var nombreFinal = nom || user || 'Mi Servicio';
-  return {
-    etiqueta: nombreFinal,
-    servicios: [nombreFinal]
-  };
+  return coincidencias.length > 0 ? coincidencias : catalogo;
 }
 
 function abrirModalMiPlanilla() {
@@ -491,11 +580,27 @@ function abrirModalMiPlanilla() {
   }
   
   var hoy = new Date();
-  var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
-  var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
+  var primerDia = formatearFechaLocalISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+  var ultimoDia = formatearFechaLocalISO(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0));
 
-  var mapeo = obtenerServiciosSegunUsuario();
-  document.getElementById('miServicioNombre').value = mapeo.etiqueta;
+  var serviciosPermitidos = obtenerServiciosSegunUsuario();
+  var sel = document.getElementById('miServicioNombre');
+  var opcionesHtml = [];
+
+  if (serviciosPermitidos.length > 1) {
+    opcionesHtml.push('<option value="__TODOS_MIS_SERVICIOS__">Todos mis servicios asignados (' + serviciosPermitidos.length + ')</option>');
+  }
+
+  serviciosPermitidos.forEach(function(s) {
+    opcionesHtml.push('<option value="' + s + '">' + s + '</option>');
+  });
+
+  sel.innerHTML = opcionesHtml.join('');
+  // Si es UTI, preseleccionamos directamente "Terapia Intensiva (UTI)"
+  if (serviciosPermitidos.includes('Terapia Intensiva (UTI)') && serviciosPermitidos.length <= 2) {
+    sel.value = 'Terapia Intensiva (UTI)';
+  }
+
   document.getElementById('miPlanillaDesde').value = primerDia;
   document.getElementById('miPlanillaHasta').value = ultimoDia;
 
@@ -505,25 +610,30 @@ function abrirModalMiPlanilla() {
 async function exportarExcelMiServicio() {
   var dDesde = document.getElementById('miPlanillaDesde').value;
   var dHasta = document.getElementById('miPlanillaHasta').value;
-  var mapeo = obtenerServiciosSegunUsuario();
+  var seleccion = document.getElementById('miServicioNombre').value;
+  var btn = document.getElementById('btnDescargarMiExcel');
+
+  var listaServicios = (seleccion === '__TODOS_MIS_SERVICIOS__')
+    ? obtenerServiciosSegunUsuario()
+    : [seleccion];
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando...';
+  }
 
   try {
-    let query = db.from('guardias').select('*');
-
-    if (mapeo.servicios.length > 1) {
-      query = query.in('servicio', mapeo.servicios);
-    } else {
-      query = query.ilike('servicio', '%' + mapeo.servicios[0] + '%');
-    }
+    let query = db.from('guardias').select('*').in('servicio', listaServicios);
     
-    if (dDesde) query = query.gte('fecha_inicio', dDesde);
-    if (dHasta) query = query.lte('fecha_fin', dHasta);
+    // Filtro por superposición de fechas (incluye guardias que empiezan en el mes aunque terminen el 1 del mes siguiente)
+    if (dDesde) query = query.gte('fecha_fin', dDesde);
+    if (dHasta) query = query.lte('fecha_inicio', dHasta);
 
     const { data, error } = await query.order('fecha_inicio', { ascending: true });
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      alert('No se encontraron guardias registradas para ' + mapeo.etiqueta + ' en el rango de fechas seleccionado.');
+      alert('No se encontraron guardias registradas para ' + (seleccion === '__TODOS_MIS_SERVICIOS__' ? 'sus servicios' : seleccion) + ' entre ' + dDesde + ' y ' + dHasta + '.');
       return;
     }
 
@@ -546,16 +656,22 @@ async function exportarExcelMiServicio() {
     XLSX.utils.book_append_sheet(wb, ws, "Mis_Guardias");
 
     ws['!cols'] = [
-      { wch: 26 }, { wch: 10 }, { wch: 22 }, { wch: 12 }, 
+      { wch: 28 }, { wch: 10 }, { wch: 24 }, { wch: 12 }, 
       { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 20 }
     ];
 
-    var nombreArchivo = "Guardias_" + mapeo.etiqueta.replace(/[\s\/]+/g, '_') + "_" + dDesde + "_al_" + dHasta + ".xlsx";
+    var etiquetaLimpia = (seleccion === '__TODOS_MIS_SERVICIOS__' ? 'Servicio' : seleccion).replace(/[^a-zA-Z0-9]+/g, '_');
+    var nombreArchivo = "Guardias_" + etiquetaLimpia + "_" + dDesde + "_al_" + dHasta + ".xlsx";
     XLSX.writeFile(wb, nombreArchivo);
 
     if (modalMiPlanillaInstance) modalMiPlanillaInstance.hide();
   } catch(e) {
     alert("Error al descargar planilla: " + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Descargar Excel (.xlsx)';
+    }
   }
 }
 
@@ -570,7 +686,6 @@ function abrirModalLogin() {
   modalInstance.show();
 }
 
-// Validación de PIN en el backend (Sin contraseña expuesta en JS)
 async function validarPin() {
   var pin = document.getElementById('adminPin').value;
   var btnIngresar = document.querySelector('#modalLogin .btn-primary');
@@ -640,14 +755,14 @@ function obtenerTodosLosServicios() {
     });
   }
 
-  // Filtramos "UTI" suelto para que solo exista "Terapia Intensiva (UTI)"
   return [...new Set(servicios)]
-    .filter(function(s) { return s.trim() !== 'UTI'; })
+    .filter(function(s) { return s && s.trim() !== 'UTI'; })
     .sort();
 }
 
-async function cargarAlertas() {
-  if (!tokenAdmin || !db) return;
+// Auditoría de 48 hs ultra-rápida (agrupada por servicio y usando memoria local)
+function cargarAlertas() {
+  if (!tokenAdmin) return;
   try {
     var ahora = new Date();
 
@@ -657,87 +772,67 @@ async function cargarAlertas() {
     }
     inicioAuditoria.setHours(8, 0, 0, 0);
 
-    var finAuditoria = new Date(inicioAuditoria.getTime() + 48 * 60 * 60 * 1000);
-
-    var fAyerStr = formatearFechaLocalISO(inicioAuditoria);
-    var { data, error } = await db
-      .from('guardias')
-      .select('*')
-      .gte('fecha_fin', fAyerStr);
-
-    if (error) throw error;
-
-    var filas = (data || []).map(function(r) {
-      var srvNorm = (r.servicio && r.servicio.trim() === 'UTI') ? 'Terapia Intensiva (UTI)' : r.servicio;
-      return {
-        id: r.id,
-        servicio: srvNorm,
-        tipo: r.tipo,
-        modalidad: r.modalidad,
-        fechaInicio: r.fecha_inicio,
-        fechaFin: r.fecha_fin,
-        responsable: r.responsable,
-        contacto: r.contacto,
-        interno: r.interno,
-        observaciones: r.observaciones
-      };
-    });
-
+    var finAuditoriaMs = inicioAuditoria.getTime() + (48 * 60 * 60 * 1000);
     var todosLosServicios = obtenerTodosLosServicios();
     huecosDetectadosGlobal = [];
 
-    var PASO_MINUTOS = 30;
-    var PASO_MS = PASO_MINUTOS * 60 * 1000;
+    // Pre-agrupar las guardias por servicio para no recorrer todo el array en cada paso
+    var guardiasPorServicio = {};
+    todosLosServicios.forEach(function(s) { guardiasPorServicio[s] = []; });
+    todasLasGuardiasRaw.forEach(function(g) {
+      if (!guardiasPorServicio[g.servicio]) guardiasPorServicio[g.servicio] = [];
+      guardiasPorServicio[g.servicio].push(g);
+    });
 
-    todosLosServicios.forEach(function(srv) {
+    var PASO_MS = 30 * 60 * 1000;
+
+    for (var idx = 0; idx < todosLosServicios.length; idx++) {
+      var srv = todosLosServicios[idx];
+      var guardiasDelServicio = guardiasPorServicio[srv] || [];
       var huecoActual = null;
-      var cursor = new Date(inicioAuditoria);
+      var cursorMs = inicioAuditoria.getTime();
 
-      while (cursor < finAuditoria) {
-        var tiempoMedio = new Date(cursor.getTime() + (PASO_MS / 2));
+      while (cursorMs < finAuditoriaMs) {
+        var tiempoMedio = new Date(cursorMs + (PASO_MS / 2));
 
-        // 1. Primero verificamos si es horario de trabajo de planta en el hospital (ej. Farmacia 8-16, Sistemas 8-15)
         var cubierto = (typeof esHorarioPlantaInstitucional === 'function')
           ? esHorarioPlantaInstitucional(srv, tiempoMedio)
           : false;
 
-        // 2. Si no es horario de planta, verificamos si hay una guardia cargada que cubra esa hora
         if (!cubierto) {
-          cubierto = filas.some(function(g) {
-            if (g.servicio !== srv) return false;
-            return typeof guardiaCubreHoraAuditoria === 'function' 
-              ? guardiaCubreHoraAuditoria(g, tiempoMedio) 
-              : (typeof esGuardiaVigente === 'function' ? esGuardiaVigente(g, tiempoMedio) : true);
-          });
+          for (var j = 0; j < guardiasDelServicio.length; j++) {
+            if (esGuardiaVigente(guardiasDelServicio[j], tiempoMedio)) {
+              cubierto = true;
+              break;
+            }
+          }
         }
 
         if (!cubierto) {
           if (!huecoActual) {
             huecoActual = {
               servicio: srv,
-              inicio: new Date(cursor),
-              fin: new Date(cursor.getTime() + PASO_MS)
+              inicio: new Date(cursorMs),
+              fin: new Date(cursorMs + PASO_MS)
             };
           } else {
-            huecoActual.fin = new Date(cursor.getTime() + PASO_MS);
+            huecoActual.fin = new Date(cursorMs + PASO_MS);
           }
-        } else {
-          if (huecoActual) {
-            huecosDetectadosGlobal.push(huecoActual);
-            huecoActual = null;
-          }
+        } else if (huecoActual) {
+          huecosDetectadosGlobal.push(huecoActual);
+          huecoActual = null;
         }
 
-        cursor = new Date(cursor.getTime() + PASO_MS);
+        cursorMs += PASO_MS;
       }
 
       if (huecoActual) {
         huecosDetectadosGlobal.push(huecoActual);
       }
-    });
+    }
 
     poblarComboFiltroAlertas(todosLosServicios);
-    renderizarListaAlertas(huecosDetectadosGlobal);
+    filtrarAlertasPorServicio();
 
   } catch(e) {
     console.error("Error al auditar descubiertos horarios:", e);
@@ -748,10 +843,11 @@ function poblarComboFiltroAlertas(servicios) {
   var sel = document.getElementById('filtroServicioAlerta');
   if (!sel) return;
   var valorPrevio = sel.value;
-  sel.innerHTML = '<option value="">Todos los servicios (' + servicios.length + ')</option>';
+  var html = ['<option value="">Todos los servicios (' + servicios.length + ')</option>'];
   servicios.forEach(function(s) {
-    sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
+    html.push('<option value="' + s + '">' + s + '</option>');
   });
+  sel.innerHTML = html.join('');
   if (valorPrevio) sel.value = valorPrevio;
 }
 
@@ -819,29 +915,30 @@ async function cargarHistorial() {
     var { data, error } = await db
       .from('guardias')
       .select('*')
-      .order('created_at', { ascending: false });
+      .neq('servicio', 'UTI')
+      .order('created_at', { ascending: false })
+      .limit(350);
 
     if (error) throw error;
 
     historialCompleto = (data || []).map(function(d) {
-      var srvNorm = (d.servicio && d.servicio.trim() === 'UTI') ? 'Terapia Intensiva (UTI)' : d.servicio;
       return {
         id: d.id,
         timestamp: d.created_at ? new Date(d.created_at).toLocaleString() : '',
-        servicio: srvNorm,
+        servicio: d.servicio,
         tipo: d.tipo,
         modalidad: d.modalidad || 'Semanal/Bloque',
         fechaInicio: d.fecha_inicio,
         fechaFin: d.fecha_fin,
-        responsable: d.responsable,
-        contacto: d.contacto,
+        responsable: d.responsable || '',
+        contacto: d.contacto || '',
         interno: d.interno || '',
         observaciones: d.observaciones ? String(d.observaciones).trim() : ''
       };
     });
 
     llenarComboServicios(historialCompleto);
-    filtrarHistorial();
+    ejecutarFiltroHistorial();
   } catch(e) {
     console.error("Error historial:", e);
   }
@@ -851,409 +948,4 @@ function llenarComboServicios(data) {
   var combo = document.getElementById('filtroServicio');
   var previo = combo.value;
   var servicios = [...new Set(data.map(function(d) { return d.servicio; }))]
-    .filter(function(s) { return s && s.trim() !== 'UTI'; })
-    .sort();
-  combo.innerHTML = '<option value="">Todos los servicios</option>';
-  servicios.forEach(function(s) { combo.innerHTML += '<option value="' + s + '">' + s + '</option>'; });
-  if (previo) combo.value = previo;
-}
-
-function filtrarHistorial() {
-  var txt = document.getElementById('filtroNombre').value.toLowerCase();
-  var serv = document.getElementById('filtroServicio').value;
-  var dDesde = document.getElementById('filtroDesde').value;
-  var dHasta = document.getElementById('filtroHasta').value;
-
-  var filtrados = historialCompleto.filter(function(item) {
-    var coincideTxt = !txt || 
-      item.responsable.toLowerCase().includes(txt) || 
-      item.contacto.toLowerCase().includes(txt) ||
-      item.interno.toLowerCase().includes(txt) ||
-      item.observaciones.toLowerCase().includes(txt);
-
-    var coincideServ = !serv || item.servicio === serv;
-    var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
-    var coincideHasta = !dHasta || item.fechaFin <= dHasta;
-    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
-  });
-
-  renderizarTablaHistorial(filtrados);
-}
-
-function renderizarTablaHistorial(datos) {
-  var tbody = document.getElementById('tablaHistorial');
-  tbody.innerHTML = '';
-  if (datos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> No se encontraron guardias con esos filtros.</td></tr>';
-    return;
-  }
-  datos.forEach(function(d) {
-    var badgeObsHist = '';
-    if (d.observaciones && d.observaciones !== 'Normal Activa') {
-      var cB = d.observaciones.toLowerCase().includes('rojo') ? 'bg-danger' : 'bg-warning text-dark';
-      badgeObsHist = '<br><span class="badge ' + cB + ' py-0" style="font-size: 0.7rem;">' + d.observaciones + '</span>';
-    }
-
-    tbody.innerHTML += '<tr>' +
-      '<td class="text-secondary small">' + d.timestamp + '</td>' +
-      '<td class="fw-bold text-white">' + d.servicio + badgeObsHist + '</td>' +
-      '<td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td>' +
-      '<td><small>' + d.modalidad + '</small></td>' +
-      '<td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td>' +
-      '<td>' + d.responsable + '</td>' +
-      '<td class="text-warning">' + d.contacto + '</td>' +
-      '<td>' + (d.interno ? '<span class="badge bg-secondary">Int. ' + d.interno + '</span>' : '-') + '</td>' +
-      '<td>' +
-        '<button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarFila(' + d.id + ')">' +
-          '<i class="bi bi-trash"></i>' +
-        '</button>' +
-      '</td>' +
-    '</tr>';
-  });
-}
-
-async function eliminarFila(id) {
-  if (!confirm('¿Seguro que deseas eliminar este registro de guardia? Quedará registrado en el log de auditoría.')) return;
-  try {
-    var { error } = await db.from('guardias').delete().eq('id', id);
-    if (error) throw error;
-    cargarHistorial();
-    cargarAlertas();
-    cargarDatos();
-  } catch(e) {
-    alert("Error al eliminar: " + e.message);
-  }
-}
-
-function exportarExcelFiltrado() {
-  var txt = document.getElementById('filtroNombre').value.toLowerCase();
-  var serv = document.getElementById('filtroServicio').value;
-  var dDesde = document.getElementById('filtroDesde').value;
-  var dHasta = document.getElementById('filtroHasta').value;
-
-  var filtrados = historialCompleto.filter(function(item) {
-    var coincideTxt = !txt || 
-      item.responsable.toLowerCase().includes(txt) || 
-      item.contacto.toLowerCase().includes(txt) ||
-      item.interno.toLowerCase().includes(txt) ||
-      item.observaciones.toLowerCase().includes(txt);
-
-    var coincideServ = !serv || item.servicio === serv;
-    var coincideDesde = !dDesde || item.fechaInicio >= dDesde;
-    var coincideHasta = !dHasta || item.fechaFin <= dHasta;
-    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
-  });
-
-  if (filtrados.length === 0) {
-    alert('No hay datos visibles con los filtros actuales para exportar.');
-    return;
-  }
-
-  var filasExcel = filtrados.map(function(d) {
-    return {
-      "Fecha Carga": d.timestamp || '',
-      "Servicio": d.servicio || '',
-      "Observaciones": d.observaciones || 'Normal Activa',
-      "Tipo": d.tipo || '',
-      "Modalidad": d.modalidad || '',
-      "Desde": d.fechaInicio || '',
-      "Hasta": d.fechaFin || '',
-      "Responsable": d.responsable || '',
-      "WhatsApp / Móvil": d.contacto || '',
-      "Interno": d.interno || ''
-    };
-  });
-
-  var ws = XLSX.utils.json_to_sheet(filasExcel);
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Guardias");
-
-  ws['!cols'] = [
-    { wch: 18 }, { wch: 26 }, { wch: 18 }, { wch: 10 }, { wch: 22 },
-    { wch: 12 }, { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 12 }
-  ];
-
-  var fechaHoy = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, "Reporte_Guardias_HIRS_" + fechaHoy + ".xlsx");
-}
-
-async function abrirModalJefes() {
-  if (!tokenAdmin) return;
-  if (!modalJefesInstance) {
-    modalJefesInstance = new bootstrap.Modal(document.getElementById('modalJefes'));
-  }
-  await cargarTablaJefes();
-  modalJefesInstance.show();
-}
-
-async function cargarTablaJefes() {
-  var tbody = document.getElementById('tablaJefesBody');
-  var selServ = document.getElementById('jefeSelServicio');
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center tabla-vacia">Cargando jefaturas...</td></tr>';
-
-  try {
-    const { data, error } = await db.from('referentes_servicios').select('*').order('servicio');
-    if (error) throw error;
-
-    var lista = data || [];
-    tbody.innerHTML = '';
-
-    var listaServiciosMaestra = obtenerTodosLosServicios();
-
-    selServ.innerHTML = '<option value="">-- Seleccione un Servicio --</option>';
-    listaServiciosMaestra.forEach(function(s) {
-      selServ.innerHTML += '<option value="' + s + '">' + s + '</option>';
-    });
-
-    if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center tabla-vacia">No hay jefes registrados aún.</td></tr>';
-      return;
-    }
-
-    lista.forEach(function(j) {
-      referentesCache[j.servicio] = { id: j.id, nombre: j.nombre_referente, contacto: j.contacto };
-      tbody.innerHTML += '<tr>' +
-        '<td class="fw-bold text-info">' + j.servicio + '</td>' +
-        '<td>' + j.nombre_referente + '</td>' +
-        '<td class="text-warning">' + j.contacto + '</td>' +
-        '<td>' +
-          '<button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarJefe(' + j.id + ')" title="Eliminar">' +
-            '<i class="bi bi-trash"></i>' +
-          '</button>' +
-        '</td>' +
-      '</tr>';
-    });
-
-  } catch(e) {
-    console.error("Error al cargar jefes:", e);
-    tbody.innerHTML = '<tr><td colspan="4" class="text-danger text-center">Error al conectar con la base de datos.</td></tr>';
-  }
-}
-
-async function guardarJefeServicio(e) {
-  e.preventDefault();
-  var srv = document.getElementById('jefeSelServicio').value;
-  var nom = document.getElementById('jefeNombre').value.trim();
-  var tel = document.getElementById('jefeContacto').value.trim();
-
-  if (!srv || !nom || !tel) return;
-
-  try {
-    const { error } = await db.from('referentes_servicios').upsert(
-      { servicio: srv, nombre_referente: nom, contacto: tel },
-      { onConflict: 'servicio' }
-    );
-    if (error) throw error;
-
-    document.getElementById('formJefe').reset();
-    await cargarTablaJefes();
-  } catch(err) {
-    alert("Error al guardar jefe: " + err.message);
-  }
-}
-
-async function eliminarJefe(id) {
-  if (!confirm("¿Desea eliminar esta jefatura?")) return;
-  try {
-    const { error } = await db.from('referentes_servicios').delete().eq('id', id);
-    if (error) throw error;
-    await cargarTablaJefes();
-  } catch(err) {
-    alert("Error al eliminar: " + err.message);
-  }
-}
-
-async function abrirModalIncumplidas() {
-  if (!tokenAdmin) return;
-  if (!modalIncumplidasInstance) {
-    modalIncumplidasInstance = new bootstrap.Modal(document.getElementById('modalIncumplidas'));
-  }
-  await cargarTablaIncumplidas();
-  modalIncumplidasInstance.show();
-}
-
-async function cargarTablaIncumplidas() {
-  var tbody = document.getElementById('tablaIncumplidasBody');
-  tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia">Cargando incidentes...</td></tr>';
-
-  try {
-    const { data, error } = await db
-      .from('guardias_incumplidas')
-      .select('*')
-      .order('fecha_reporte', { ascending: false });
-
-    if (error) throw error;
-
-    guardiasIncumplidasLista = data || [];
-    tbody.innerHTML = '';
-
-    if (guardiasIncumplidasLista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia text-success"><i class="bi bi-check-circle me-1"></i> No se han registrado incidentes de guardia.</td></tr>';
-      return;
-    }
-
-    guardiasIncumplidasLista.forEach(function(item) {
-      var fRep = item.fecha_reporte ? new Date(item.fecha_reporte).toLocaleString() : '-';
-      tbody.innerHTML += '<tr>' +
-        '<td class="text-secondary small">' + fRep + '</td>' +
-        '<td class="fw-bold text-danger">' + item.servicio + '</td>' +
-        '<td>' + item.responsable + '</td>' +
-        '<td><span class="badge bg-secondary">' + (item.tipo || '-') + '</span></td>' +
-        '<td><small>' + (item.modalidad || '-') + '</small></td>' +
-        '<td class="text-warning small">' + (item.motivo || 'Reportado') + '</td>' +
-        '<td>' +
-          '<button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarReporteIncumplido(' + item.id + ')">' +
-            '<i class="bi bi-trash"></i>' +
-          '</button>' +
-        '</td>' +
-      '</tr>';
-    });
-
-  } catch(e) {
-    console.error("Error al cargar incidentes:", e);
-    tbody.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Error al conectar con la base de datos.</td></tr>';
-  }
-}
-
-async function eliminarReporteIncumplido(id) {
-  if (!confirm("¿Desea quitar este registro de incidente de guardia?")) return;
-  try {
-    const { error } = await db.from('guardias_incumplidas').delete().eq('id', id);
-    if (error) throw error;
-    await cargarTablaIncumplidas();
-  } catch(e) {
-    alert("Error al eliminar: " + e.message);
-  }
-}
-
-function exportarExcelIncumplidas() {
-  if (!guardiasIncumplidasLista || guardiasIncumplidasLista.length === 0) {
-    alert('No hay registros de incidentes de guardia para exportar.');
-    return;
-  }
-
-  var filas = guardiasIncumplidasLista.map(function(d) {
-    return {
-      "Fecha de Reporte": d.fecha_reporte ? new Date(d.fecha_reporte).toLocaleString() : '',
-      "Servicio": d.servicio || '',
-      "Responsable Reportado": d.responsable || '',
-      "Tipo de Guardia": d.tipo || '',
-      "Modalidad": d.modalidad || '',
-      "Detalle / Incidente": d.motivo || 'Incidente reportado'
-    };
-  });
-
-  var ws = XLSX.utils.json_to_sheet(filas);
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Incidentes");
-
-  ws['!cols'] = [
-    { wch: 22 }, { wch: 26 }, { wch: 24 }, { wch: 14 }, { wch: 22 }, { wch: 40 }
-  ];
-
-  var fechaHoy = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, "Reporte_Incidentes_Guardias_HIRS_" + fechaHoy + ".xlsx");
-}
-
-async function abrirModalLogs() {
-  if (!tokenAdmin) return;
-  if (!modalLogsInstance) {
-    modalLogsInstance = new bootstrap.Modal(document.getElementById('modalLogs'));
-  }
-  await cargarTablaLogs();
-  modalLogsInstance.show();
-}
-
-async function cargarTablaLogs() {
-  var tbody = document.getElementById('tablaLogsBody');
-  tbody.innerHTML = '<tr><td colspan="6" class="text-center tabla-vacia">Cargando registros de auditoría...</td></tr>';
-
-  try {
-    const { data, error } = await db
-      .from('logs_auditoria')
-      .select('*')
-      .order('fecha_hora', { ascending: false })
-      .limit(200);
-
-    if (error) throw error;
-
-    logsAuditoriaLista = data || [];
-    tbody.innerHTML = '';
-
-    if (logsAuditoriaLista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center tabla-vacia text-success"><i class="bi bi-check-circle me-1"></i> No se han registrado movimientos en la base de datos.</td></tr>';
-      return;
-    }
-
-    logsAuditoriaLista.forEach(function(l) {
-      var fHora = l.fecha_hora ? new Date(l.fecha_hora).toLocaleString() : '-';
-      var badgeClass = 'bg-secondary';
-      if (l.operacion === 'ELIMINAR') badgeClass = 'bg-danger';
-      if (l.operacion === 'CREAR') badgeClass = 'bg-success';
-      if (l.operacion === 'ACTUALIZAR') badgeClass = 'bg-warning text-dark';
-
-      var detalle = '';
-      if (l.operacion === 'ELIMINAR') {
-        var ant = l.datos_anteriores || {};
-        detalle = 'Se eliminó guardia del ' + (ant.fecha_inicio || '?') + ' al ' + (ant.fecha_fin || '?') + ' (' + (ant.modalidad || '') + ')';
-      } else if (l.operacion === 'CREAR') {
-        var nvo = l.datos_nuevos || {};
-        detalle = 'Alta asignada para: ' + (nvo.fecha_inicio || '?') + ' al ' + (nvo.fecha_fin || '?') + ' | ' + (nvo.modalidad || '');
-      } else {
-        detalle = 'Modificación de registro';
-      }
-
-      tbody.innerHTML += '<tr>' +
-        '<td class="text-secondary">' + fHora + '</td>' +
-        '<td><span class="badge ' + badgeClass + '">' + l.operacion + '</span></td>' +
-        '<td class="text-secondary">' + (l.registro_id || '-') + '</td>' +
-        '<td class="fw-bold text-light">' + (l.servicio || '-') + '</td>' +
-        '<td>' + (l.responsable || '-') + '</td>' +
-        '<td class="text-info small">' + detalle + '</td>' +
-      '</tr>';
-    });
-
-  } catch(e) {
-    console.error("Error al cargar logs:", e);
-    tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Error al conectar con la base de datos de auditoría.</td></tr>';
-  }
-}
-
-function exportarExcelLogs() {
-  if (!logsAuditoriaLista || logsAuditoriaLista.length === 0) {
-    alert('No hay registros de auditoría para exportar.');
-    return;
-  }
-
-  var filas = logsAuditoriaLista.map(function(d) {
-    var ant = d.datos_anteriores ? JSON.stringify(d.datos_anteriores) : '';
-    var nvo = d.datos_nuevos ? JSON.stringify(d.datos_nuevos) : '';
-
-    return {
-      "ID Log": d.id,
-      "Fecha y Hora": d.fecha_hora ? new Date(d.fecha_hora).toLocaleString() : '',
-      "Operación": d.operacion || '',
-      "Tabla": d.tabla_afectada || '',
-      "ID Registro": d.registro_id || '',
-      "Servicio": d.servicio || '',
-      "Responsable": d.responsable || '',
-      "Datos Anteriores (JSON)": ant,
-      "Datos Nuevos (JSON)": nvo
-    };
-  });
-
-  var ws = XLSX.utils.json_to_sheet(filas);
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
-
-  ws['!cols'] = [
-    { wch: 10 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, 
-    { wch: 12 }, { wch: 26 }, { wch: 24 }, { wch: 35 }, { wch: 35 }
-  ];
-
-  var fechaHoy = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, "Logs_Auditoria_Guardias_HIRS_" + fechaHoy + ".xlsx");
-}
-
-if (tokenAdmin) activarModoAdmin();
-cargarDatos();
+    .filter(function(s) { return s && s.trim
