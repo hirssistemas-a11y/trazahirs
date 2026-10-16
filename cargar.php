@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
-$APP_VERSION = "v2.6.9";
+$APP_VERSION = "v2.6.6";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -113,7 +113,7 @@ $APP_VERSION = "v2.6.9";
         <label class="form-label text-light fw-bold small d-flex justify-content-between align-items-center">
           <span>Fecha o Rango de Cobertura *</span>
           <div class="btn-group" role="group">
-            <button type="button" class="btn btn-sm btn-outline-info btn-modo-fecha active" id="btnModoRango" onclick="cambiarModoFecha('rango')">
+            <button type="button" class="btn btn-sm btn-outline-info btn-modo-fecha active" id="btnModoRango" onclick="cambiarModoFecha('range')">
               <i class="bi bi-calendar-range"></i> Rango Continuo
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary btn-modo-fecha" id="btnModoDias" onclick="cambiarModoFecha('multiple')">
@@ -123,7 +123,7 @@ $APP_VERSION = "v2.6.9";
         </label>
         
         <input type="text" id="selectorFechas" class="form-control" placeholder="Haga clic para seleccionar fecha de inicio y fin..." required readonly>
-        <div id="rangoAyuda" class="form-text text-secondary small mt-1">Haga clic en el primer día y luego en el último día para cubrir el rango.</div>
+        <div id="rangoAyuda" class="form-text text-secondary small mt-1">Haga clic en el primer día y luego en el último día para cubrir el bloque.</div>
 
         <input type="hidden" id="fecha_inicio">
         <input type="hidden" id="fecha_fin">
@@ -145,7 +145,7 @@ $APP_VERSION = "v2.6.9";
         </div>
       </div>
 
-      <!-- Fila 5: Observaciones / Estado Operativo -->
+      <!-- Fila 5: Observaciones / Estado Operativo (Solo habilitado para Guardia Externa) -->
       <div class="mb-4" id="bloqueObservaciones">
         <label for="observaciones" class="form-label text-light fw-bold small">Observaciones / Estado Operativo Especial</label>
         <select id="observaciones" class="form-select">
@@ -167,7 +167,7 @@ $APP_VERSION = "v2.6.9";
   </div>
 </div>
 
-<!-- Variables inyectadas de la sesión de PHP -->
+<!-- Variables inyectadas por sesión de PHP para filtrar servicios según usuario -->
 <script>
   const SESION_USUARIO = "<?php echo addslashes($USUARIO_LOGUEADO); ?>";
   const SESION_NOMBRE  = "<?php echo addslashes($NOMBRE_SERVICIO); ?>";
