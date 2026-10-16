@@ -14,14 +14,13 @@ $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
-$APP_VERSION = "v2.6.9";
-$APP_FECHA   = "06/10/2026";
+$APP_VERSION = "v2.6.6";
+$APP_FECHA   = "16/10/2026";
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <base href="/services/guardias/">
-  <meta charset="UTF-8">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel de Guardias - Hospital Italiano</title>
@@ -437,7 +436,7 @@ $APP_FECHA   = "06/10/2026";
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <input type="password" id="adminPin" class="form-control filtro-input text-center fs-5" placeholder="••••" maxlength="20">
+          <input type="password" id="adminPin" class="form-control filtro-input text-center fs-5" placeholder="••••" maxlength="20" onkeydown="if(event.key==='Enter') validarPin()">
           <div id="loginError" class="text-danger small mt-2 text-center" style="display:none;">PIN incorrecto</div>
         </div>
         <div class="modal-footer border-secondary">
