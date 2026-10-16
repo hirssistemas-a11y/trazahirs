@@ -1,5 +1,5 @@
 // ==========================================
-// CONTROLADOR DEL MONITOR EN VIVO (HIRS) - OPTIMIZADO
+// CONTROLADOR DEL MONITOR EN VIVO (HIRS)
 // ==========================================
 
 var tokenAdmin = sessionStorage.getItem("admin_token") || null;
@@ -29,22 +29,16 @@ var INTERVALO_REFRESCO_SEG = 30;
 var timerFiltroHistorial = null;
 
 function normalizarTexto(t) {
-  return String(t || '')
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+  return String(t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
 function actualizarReloj() {
-  if (document.hidden) return; // No gastar CPU si la pestaña está minimizada
-
+  if (document.hidden) return;
   var now = new Date();
   var elReloj = document.getElementById('reloj');
   if (elReloj) {
     elReloj.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' | ' + now.toLocaleDateString();
   }
-  
   segundosDesdeUltimaSync++;
   var elStatus = document.getElementById('syncStatus');
   if (elStatus) {
@@ -55,7 +49,6 @@ function actualizarReloj() {
       elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Actualizado hace ' + segundosDesdeUltimaSync + 's (próximo en ' + (prox > 0 ? prox : 0) + 's)';
     }
   }
-
   if (segundosDesdeUltimaSync >= INTERVALO_REFRESCO_SEG) {
     cargarDatos(false);
   }
@@ -72,30 +65,17 @@ function filtrarCategoria(cat) {
   var bTodos = document.getElementById('btnTabTodos');
   var bProf = document.getElementById('btnTabProf');
   var bOper = document.getElementById('btnTabOper');
-
-  bTodos.blur();
-  bProf.blur();
-  bOper.blur();
-
-  bTodos.className = cat === 'todas' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
-  bProf.className = cat === 'profesional' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
-  bOper.className = cat === 'operativa' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
-
+  if (bTodos) bTodos.className = cat === 'todas' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+  if (bProf) bProf.className = cat === 'profesional' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
+  if (bOper) bOper.className = cat === 'operativa' ? 'btn btn-switch btn-switch-active flex-fill flex-md-grow-0' : 'btn btn-switch btn-switch-inactive flex-fill flex-md-grow-0';
   renderizarTablasEnVivo(guardiasEnVivo);
 }
 
-// -------------------------------------------------------------
-// LIMPIEZA AUTOMÁTICA DE "UTI" VIEJA Y GUARDIAS DUPLICADAS
-// -------------------------------------------------------------
 async function limpiarUTIDuplicadasEnBD() {
   if (limpiezaUTIEjecutada || !db) return;
   limpiezaUTIEjecutada = true;
-
   try {
-    // 1. Borrar todas las guardias que quedaron con el nombre viejo "UTI"
     await db.from('guardias').delete().eq('servicio', 'UTI');
-
-    // 2. Buscar si hay duplicadas exactas dentro de "Terapia Intensiva (UTI)" y eliminar el duplicado
     const { data: utiRows } = await db
       .from('guardias')
       .select('id, servicio, fecha_inicio, fecha_fin, modalidad, responsable')
@@ -105,29 +85,17 @@ async function limpiarUTIDuplicadasEnBD() {
     if (utiRows && utiRows.length > 1) {
       var vistos = new Set();
       var idsDuplicados = [];
-
       utiRows.forEach(function(r) {
-        var clave = [
-          r.servicio,
-          r.fecha_inicio,
-          r.fecha_fin,
-          (r.modalidad || '').trim().toLowerCase(),
-          (r.responsable || '').trim().toLowerCase()
-        ].join('|');
-
-        if (vistos.has(clave)) {
-          idsDuplicados.push(r.id);
-        } else {
-          vistos.add(clave);
-        }
+        var clave = [r.servicio, r.fecha_inicio, r.fecha_fin, (r.modalidad || '').trim().toLowerCase(), (r.responsable || '').trim().toLowerCase()].join('|');
+        if (vistos.has(clave)) idsDuplicados.push(r.id);
+        else vistos.add(clave);
       });
-
       if (idsDuplicados.length > 0) {
         await db.from('guardias').delete().in('id', idsDuplicados);
       }
     }
   } catch (e) {
-    console.warn("Aviso en limpieza automática de UTI:", e);
+    console.warn("Aviso limpieza UTI:", e);
   }
 }
 
@@ -140,12 +108,11 @@ async function cargarDatos(forzarTodo) {
   try {
     if (!db) throw new Error("Base de datos no configurada en js/config.js");
 
-    // Ejecutar limpieza de "UTI" vieja y cargar referentes solo la primera vez o al forzar
     if (!limpiezaUTIEjecutada) {
-      await limpiarUTIDuplicadasEnBD();
+      limpiarUTIDuplicadasEnBD();
     }
     if (!referentesCargados || forzarTodo) {
-      await cargarReferentesDesdeBD();
+      cargarReferentesDesdeBD();
     }
 
     var ahora = new Date();
@@ -167,8 +134,6 @@ async function cargarDatos(forzarTodo) {
 
     (data || []).forEach(function(r) {
       if (!r.servicio || r.servicio.trim() === 'UTI') return;
-
-      // Evitar mostrar filas idénticas duplicadas en pantalla
       var claveUnica = r.servicio + '|' + r.fecha_inicio + '|' + r.fecha_fin + '|' + (r.modalidad || '') + '|' + (r.responsable || '').trim().toLowerCase();
       if (vistosEnMemoria.has(claveUnica)) return;
       vistosEnMemoria.add(claveUnica);
@@ -185,9 +150,7 @@ async function cargarDatos(forzarTodo) {
         interno: r.interno,
         observaciones: r.observaciones ? String(r.observaciones).trim() : null
       };
-      if (typeof asegurarCacheFechasGuardia === 'function') {
-        asegurarCacheFechasGuardia(obj);
-      }
+      if (typeof asegurarCacheFechasGuardia === 'function') asegurarCacheFechasGuardia(obj);
       todasLasGuardiasRaw.push(obj);
     });
 
@@ -201,14 +164,10 @@ async function cargarDatos(forzarTodo) {
     if (elStatus) elStatus.innerHTML = '<i class="bi bi-check-circle text-success"></i> Conectado';
 
     if (tokenAdmin) {
-      // Reutilizamos todasLasGuardiasRaw para las alertas de 48 hs (sin hacer otra consulta a Supabase)
       cargarAlertas();
-      if (forzarTodo || historialCompleto.length === 0) {
-        cargarHistorial();
-      }
+      if (forzarTodo || historialCompleto.length === 0) cargarHistorial();
     }
-
-  } catch(err) {
+  } catch (err) {
     console.error("Error al obtener guardias:", err);
     cargandoDatos = false;
     segundosDesdeUltimaSync = 0;
@@ -221,38 +180,31 @@ async function cargarReferentesDesdeBD() {
     const { data, error } = await db.from('referentes_servicios').select('*');
     if (!error && data) {
       data.forEach(function(item) {
-        referentesCache[item.servicio] = {
-          id: item.id,
-          nombre: item.nombre_referente,
-          contacto: item.contacto
-        };
+        referentesCache[item.servicio] = { id: item.id, nombre: item.nombre_referente, contacto: item.contacto };
       });
       referentesCargados = true;
     }
   } catch (e) {
-    console.warn("No se pudo cargar referentes_servicios:", e);
+    console.warn("Aviso referentes:", e);
   }
 }
 
 function buscarProximaGuardia(servicioActual, idActual) {
-  var umbralTimestamp = Date.now() - (5 * 60 * 1000);
+  var umbralTimestamp = Date.now() - 300000;
   var mejorCandidata = null;
   var mejorTs = Infinity;
 
   for (var i = 0; i < todasLasGuardiasRaw.length; i++) {
     var g = todasLasGuardiasRaw[i];
     if (g.servicio !== servicioActual || g.id === idActual) continue;
-
     var inicioTurno = typeof obtenerInicioTurnoGuardia === 'function' ? obtenerInicioTurnoGuardia(g) : null;
     if (!inicioTurno) continue;
-
     var ts = inicioTurno.getTime();
     if (ts >= umbralTimestamp && ts < mejorTs) {
       mejorTs = ts;
       mejorCandidata = g;
     }
   }
-
   return mejorCandidata;
 }
 
@@ -272,62 +224,35 @@ function generarBotonesContacto(contacto, servicio, responsable, interno, idGuar
   var html = '<div class="d-flex align-items-center gap-1 flex-wrap">';
 
   if (limpio) {
-    html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar">' +
-              '<i class="bi bi-telephone-fill"></i> ' + limpio +
-            '</a>';
+    html += '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel" title="Llamar"><i class="bi bi-telephone-fill"></i> ' + limpio + '</a>';
   }
-
   if (wspNum) {
     var msg = encodeURIComponent('Hola ' + responsable + ', te contacto por la guardia de ' + servicio + ' en el Hospital Italiano.');
     var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    var urlWsp = esMovil 
-      ? 'https://wa.me/' + wspNum + '?text=' + msg 
-      : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
-
-    html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp">' +
-              '<i class="bi bi-whatsapp"></i> WSP' +
-            '</a>';
+    var urlWsp = esMovil ? 'https://wa.me/' + wspNum + '?text=' + msg : 'https://web.whatsapp.com/send?phone=' + wspNum + '&text=' + msg;
+    html += '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp" title="Enviar WhatsApp"><i class="bi bi-whatsapp"></i> WSP</a>';
   }
-
   if (interno && String(interno).trim() !== '') {
-    html += '<span class="badge-interno" title="Interno hospitalario">' +
-              '<i class="bi bi-telephone-inbound"></i> Int. ' + String(interno).trim() +
-            '</span>';
+    html += '<span class="badge-interno"><i class="bi bi-telephone-inbound"></i> Int. ' + String(interno).trim() + '</span>';
   }
 
-  var guardiaObjJson = JSON.stringify({
-    id: idGuardia,
-    servicio: servicio,
-    responsable: responsable,
-    tipo: tipo,
-    modalidad: modalidad
-  }).replace(/"/g, '&quot;');
-
-  html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')" title="Reportar incidente de guardia">' +
-            '<i class="bi bi-flag-fill"></i> Reportar' +
-          '</button>';
-
-  html += '</div>';
+  var guardiaObjJson = JSON.stringify({ id: idGuardia, servicio: servicio, responsable: responsable, tipo: tipo, modalidad: modalidad }).replace(/"/g, '&quot;');
+  html += '<button type="button" class="btn-action-report" onclick="solicitarConfirmacionReporte(' + guardiaObjJson + ')"><i class="bi bi-flag-fill"></i> Reportar</button></div>';
   return html;
 }
 
 function actualizarContadorChar(textarea) {
-  var len = textarea.value.length;
-  document.getElementById('charCount').innerText = len + '/120';
+  document.getElementById('charCount').innerText = textarea.value.length + '/120';
 }
 
 function solicitarConfirmacionReporte(guardia) {
   guardiaPendienteReporte = guardia;
   document.getElementById('confRepServicio').innerText = guardia.servicio;
   document.getElementById('confRepResponsable').innerText = guardia.responsable;
-
   var txtArea = document.getElementById('motivoIncidente');
   txtArea.value = '';
   actualizarContadorChar(txtArea);
-
-  if (!modalConfirmarInstance) {
-    modalConfirmarInstance = new bootstrap.Modal(document.getElementById('modalConfirmarReporte'));
-  }
+  if (!modalConfirmarInstance) modalConfirmarInstance = new bootstrap.Modal(document.getElementById('modalConfirmarReporte'));
   modalConfirmarInstance.show();
 }
 
@@ -336,7 +261,6 @@ async function confirmarReporteIncumplimiento() {
   var g = guardiaPendienteReporte;
   var motivoTexto = document.getElementById('motivoIncidente').value.trim();
   var motivoFinal = motivoTexto !== '' ? motivoTexto.slice(0, 120) : 'Incidente reportado desde el monitor público';
-
   try {
     if (db) {
       await db.from('guardias_incumplidas').insert([{
@@ -348,73 +272,46 @@ async function confirmarReporteIncumplimiento() {
         motivo: motivoFinal
       }]);
     }
-    if (modalConfirmarInstance) modalConfirmarInstance.hide();
-    mostrarContactoReferente(g.servicio);
   } catch (err) {
-    console.error("Error al registrar incidente:", err);
-    if (modalConfirmarInstance) modalConfirmarInstance.hide();
-    mostrarContactoReferente(g.servicio);
+    console.error("Error incidente:", err);
   }
+  if (modalConfirmarInstance) modalConfirmarInstance.hide();
+  mostrarContactoReferente(g.servicio);
 }
 
 function mostrarContactoReferente(servicio) {
-  var ref = referentesCache[servicio];
-
-  if (!ref && typeof REFERENTES_SERVICIOS !== 'undefined') {
-    ref = REFERENTES_SERVICIOS[servicio];
-  }
-  if (!ref) {
-    ref = { nombre: 'Dirección Médica / Guardia Central', contacto: '2914000000' };
-  }
-
+  var ref = referentesCache[servicio] || (typeof REFERENTES_SERVICIOS !== 'undefined' ? REFERENTES_SERVICIOS[servicio] : null) || { nombre: 'Dirección Médica / Guardia Central', contacto: '2914000000' };
   document.getElementById('repServicio').innerText = servicio;
   document.getElementById('repNombre').innerText = ref.nombre || ref.nombre_referente;
 
   var cont = document.getElementById('repAccionesContacto');
   var htmlBotones = [];
-
   var limpio = String(ref.contacto || '').trim();
   var wsp = normalizarWhatsApp(limpio);
 
   if (limpio) {
-    htmlBotones.push(
-      '<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel fs-6 py-1 px-3">' +
-        '<i class="bi bi-telephone-fill me-1"></i> Llamar: ' + limpio +
-      '</a>'
-    );
+    htmlBotones.push('<a href="tel:' + limpio.replace(/\s+/g, '') + '" class="btn-action-tel fs-6 py-1 px-3"><i class="bi bi-telephone-fill me-1"></i> Llamar: ' + limpio + '</a>');
   }
-
   if (wsp) {
-    var msg = encodeURIComponent('Hola ' + (ref.nombre || 'Jefe de Servicio') + ', me comunico para notificar una novedad sobre la guardia de ' + servicio + ' en el Hospital Italiano.');
+    var msg = encodeURIComponent('Hola ' + (ref.nombre || 'Jefe de Servicio') + ', me comunico por una novedad sobre la guardia de ' + servicio + ' en el Hospital Italiano.');
     var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     var urlWsp = esMovil ? 'https://wa.me/' + wsp + '?text=' + msg : 'https://web.whatsapp.com/send?phone=' + wsp + '&text=' + msg;
-
-    htmlBotones.push(
-      '<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp fs-6 py-1 px-3">' +
-        '<i class="bi bi-whatsapp me-1"></i> WhatsApp' +
-      '</a>'
-    );
+    htmlBotones.push('<a href="' + urlWsp + '" target="_blank" rel="noopener noreferrer" class="btn-action-wsp fs-6 py-1 px-3"><i class="bi bi-whatsapp me-1"></i> WhatsApp</a>');
   }
-
   cont.innerHTML = htmlBotones.join('');
-
-  if (!modalContactoInstance) {
-    modalContactoInstance = new bootstrap.Modal(document.getElementById('modalContactoReferente'));
-  }
+  if (!modalContactoInstance) modalContactoInstance = new bootstrap.Modal(document.getElementById('modalContactoReferente'));
   modalContactoInstance.show();
 }
 
-// Renderizado en memoria con 1 sola escritura DOM
 function renderizarTablasEnVivo(guardias) {
   var tAct = document.getElementById('tablaActivas');
   var tPas = document.getElementById('tablaPasivas');
-
   var filasActivas = [];
   var filasPasivas = [];
   var listaOperativos = (typeof SERVICIOS_OPERATIVOS !== 'undefined') ? SERVICIOS_OPERATIVOS : [];
   var ahora = new Date();
   var ahoraMs = ahora.getTime();
-  var LIMITE_48_HORAS_MS = 48 * 60 * 60 * 1000;
+  var LIMITE_48_HORAS_MS = 172800000;
 
   for (var index = 0; index < guardias.length; index++) {
     var g = guardias[index];
@@ -423,29 +320,23 @@ function renderizarTablasEnVivo(guardias) {
     if (filtroCategoriaActual === 'operativa' && !esOperativo) continue;
 
     var btns = generarBotonesContacto(g.contacto, g.servicio, g.responsable, g.interno, g.id, g.tipo, g.modalidad);
-
     var badgeObs = '';
     var obsTexto = (g.observaciones || '').toString().trim();
     if (obsTexto && obsTexto !== 'Normal Activa' && obsTexto !== 'null' && obsTexto !== 'undefined') {
       var esCritico = obsTexto.toLowerCase().includes('rojo');
       var colorFondo = esCritico ? '#dc2626' : '#d97706';
       var icono = esCritico ? 'bi-exclamation-octagon-fill' : 'bi-exclamation-triangle-fill';
-      badgeObs = '<div style="margin-top: 4px;">' +
-                   '<span style="background-color: ' + colorFondo + ' !important; color: #ffffff !important; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-block;">' +
-                     '<i class="bi ' + icono + ' me-1"></i>' + obsTexto.toUpperCase() +
-                   '</span>' +
-                 '</div>';
+      badgeObs = '<div style="margin-top: 4px;"><span style="background-color:' + colorFondo + ' !important;color:#fff !important;padding:3px 8px;border-radius:4px;font-size:0.75rem;font-weight:700;display:inline-block;"><i class="bi ' + icono + ' me-1"></i>' + obsTexto.toUpperCase() + '</span></div>';
     }
 
     var fechaFinTurno = typeof obtenerFinTurnoGuardia === 'function' ? obtenerFinTurnoGuardia(g, ahora) : null;
     var msRestantes = fechaFinTurno ? (fechaFinTurno.getTime() - ahoraMs) : 0;
     var tiempoRestanteTxt = typeof formatearTiempoRestante === 'function' ? formatearTiempoRestante(msRestantes) : '-';
 
-    var mostrarDesplegable = (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS);
     var btnDesplegable = '';
     var filaCollapseHtml = '';
 
-    if (mostrarDesplegable) {
+    if (msRestantes > 0 && msRestantes <= LIMITE_48_HORAS_MS) {
       var prox = buscarProximaGuardia(g.servicio, g.id);
       var contenidoDesplegable = '';
       var btnClaseAlerta = 'btn-outline-secondary';
@@ -454,178 +345,97 @@ function renderizarTablasEnVivo(guardias) {
       if (prox) {
         var obsProx = (prox.observaciones || '').toString().toLowerCase();
         var badgeObsProx = '';
-
         if (obsProx.includes('rojo')) {
           btnClaseAlerta = 'btn-outline-danger';
           borderClaseCollapse = 'border-danger';
-          badgeObsProx = ' <span class="badge bg-danger ms-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>CÓDIGO ROJO</span>';
+          badgeObsProx = ' <span class="badge bg-danger ms-1">CÓDIGO ROJO</span>';
         } else if (obsProx.includes('restringida')) {
           btnClaseAlerta = 'btn-outline-warning';
           borderClaseCollapse = 'border-warning';
-          badgeObsProx = ' <span class="badge bg-warning text-dark ms-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>RESTRINGIDA</span>';
+          badgeObsProx = ' <span class="badge bg-warning text-dark ms-1">RESTRINGIDA</span>';
         }
-
-        contenidoDesplegable = 
-          '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-            '<div><i class="bi bi-hourglass-split text-info me-1"></i> <strong>Cambio de guardia en:</strong> <span class="badge bg-primary text-white fs-6 py-1 px-2">' + tiempoRestanteTxt + '</span></div>' +
-            '<div><i class="bi bi-person-fill-up text-success me-1"></i> <strong>Sigue:</strong> ' +
-              '<strong class="text-white">' + prox.responsable + '</strong>' + badgeObsProx +
-              ' <span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span>' +
-              (prox.contacto ? ' • <i class="bi bi-telephone-fill text-info"></i> ' + prox.contacto : '') +
-              (prox.interno ? ' • <span class="badge bg-secondary">Int. ' + prox.interno + '</span>' : '') +
-            '</div>' +
-          '</div>';
+        contenidoDesplegable = '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><i class="bi bi-hourglass-split text-info me-1"></i> <strong>Cambio en:</strong> <span class="badge bg-primary">' + tiempoRestanteTxt + '</span></div><div><i class="bi bi-person-fill-up text-success me-1"></i> <strong>Sigue:</strong> <strong class="text-white">' + prox.responsable + '</strong>' + badgeObsProx + ' <span class="text-secondary">(' + (prox.fechaInicio || '') + ' - ' + (prox.modalidad || '') + ')</span></div></div>';
       } else {
         btnClaseAlerta = 'btn-outline-danger';
         borderClaseCollapse = 'border-danger';
-        contenidoDesplegable = 
-          '<div class="d-flex align-items-center gap-2 text-danger fw-bold fs-6 py-1">' +
-            '<i class="bi bi-exclamation-triangle-fill fs-5"></i> ' +
-            '<span>¡Alerta! No hay responsable de guardia dentro de: <u class="text-warning">' + tiempoRestanteTxt + '</u></span>' +
-          '</div>';
+        contenidoDesplegable = '<div class="d-flex align-items-center gap-2 text-danger fw-bold py-1"><i class="bi bi-exclamation-triangle-fill"></i> <span>¡Alerta! Sin relevo cargado dentro de: <u class="text-warning">' + tiempoRestanteTxt + '</u></span></div>';
       }
 
       var collapseId = 'collapseProx_' + (g.id || index);
-
-      btnDesplegable = '<button class="btn btn-sm ' + btnClaseAlerta + ' py-0 px-2 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" title="Ver información del próximo turno">' +
-                         '<i class="bi bi-clock-history me-1"></i> <small class="fw-bold">' + tiempoRestanteTxt + '</small> <i class="bi bi-chevron-down small"></i>' +
-                       '</button>';
-
-      filaCollapseHtml = 
-        '<tr class="p-0 border-0">' +
-          '<td colspan="3" class="p-0 border-0">' +
-            '<div class="collapse" id="' + collapseId + '">' +
-              '<div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + borderClaseCollapse + ' border-opacity-75 small">' +
-                contenidoDesplegable +
-              '</div>' +
-            '</div>' +
-          '</td>' +
-        '</tr>';
+      btnDesplegable = '<button class="btn btn-sm ' + btnClaseAlerta + ' py-0 px-2 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '"><i class="bi bi-clock-history me-1"></i> <small class="fw-bold">' + tiempoRestanteTxt + '</small> <i class="bi bi-chevron-down small"></i></button>';
+      filaCollapseHtml = '<tr class="p-0 border-0"><td colspan="3" class="p-0 border-0"><div class="collapse" id="' + collapseId + '"><div class="p-2 mx-2 mb-2 rounded bg-black bg-opacity-50 border ' + borderClaseCollapse + ' small">' + contenidoDesplegable + '</div></div></td></tr>';
     }
 
-    var row = '<tr>' +
-      '<td>' +
-        '<div class="d-flex align-items-center justify-content-between">' +
-          '<div class="fw-bold text-white">' + g.servicio + '</div>' +
-          btnDesplegable +
-        '</div>' +
-        badgeObs +
-      '</td>' +
-      '<td class="align-middle">' + g.responsable + '</td>' +
-      '<td class="align-middle">' + btns + '</td>' +
-    '</tr>' + filaCollapseHtml;
-
-    if (g.tipo === 'Activa') {
-      filasActivas.push(row);
-    } else {
-      filasPasivas.push(row);
-    }
+    var row = '<tr><td><div class="d-flex align-items-center justify-content-between"><div class="fw-bold text-white">' + g.servicio + '</div>' + btnDesplegable + '</div>' + badgeObs + '</td><td class="align-middle">' + g.responsable + '</td><td class="align-middle">' + btns + '</td></tr>' + filaCollapseHtml;
+    if (g.tipo === 'Activa') filasActivas.push(row);
+    else filasPasivas.push(row);
   }
 
-  tAct.innerHTML = filasActivas.length > 0
-    ? filasActivas.join('')
-    : '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias activas para la vista seleccionada.</td></tr>';
-
-  tPas.innerHTML = filasPasivas.length > 0
-    ? filasPasivas.join('')
-    : '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias pasivas a demanda para la vista seleccionada.</td></tr>';
+  tAct.innerHTML = filasActivas.length > 0 ? filasActivas.join('') : '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias activas para la vista seleccionada.</td></tr>';
+  tPas.innerHTML = filasPasivas.length > 0 ? filasPasivas.join('') : '<tr><td colspan="3" class="text-center tabla-vacia"><i class="bi bi-info-circle me-1"></i> Sin guardias pasivas a demanda para la vista seleccionada.</td></tr>';
 }
 
-// -------------------------------------------------------------
-// MI PLANILLA (COMPATIBLE CON UTI Y TODOS LOS SERVICIOS)
-// -------------------------------------------------------------
 function obtenerServiciosSegunUsuario() {
   var u = normalizarTexto(typeof SESION_USUARIO !== 'undefined' ? SESION_USUARIO : '');
   var n = normalizarTexto(typeof SESION_NOMBRE !== 'undefined' ? SESION_NOMBRE : '');
   var catalogo = obtenerTodosLosServicios();
 
-  // Si es admin/sistemas/dirección/personal o sesión vacía, puede elegir cualquier servicio
-  if (!u || u === 'sistemas' || u === 'admin' || u === 'personal' || u === 'direccion' || n.includes('sistemas') || n.includes('administracion')) {
-    return catalogo;
-  }
-
-  if (u === 'guardia' || n === 'guardia') {
-    return ['Guardia externa Adultos'];
-  }
-  if (u.includes('uti') || n.includes('uti') || u.includes('terapia') || n.includes('terapia')) {
-    return ['Terapia Intensiva (UTI)', 'Terapia Intensiva Pediatrica (UTIP)'];
-  }
-  if (u.includes('pediatria') || n.includes('pediatria') || u.includes('neo') || n.includes('neo')) {
-    return ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria', 'Terapia Intensiva Pediatrica (UTIP)'];
-  }
-  if (u.includes('ecoimagenes') || n.includes('ecoimagenes') || u.includes('ecodoppler')) {
-    return ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico', 'Ecografia'];
-  }
-  if (u.includes('anestesia') || n.includes('anestesia')) {
-    return ['Anestesista', 'Tecnico de Anestesia'];
-  }
-  if (u.includes('imagenes') || u.includes('rayos') || n.includes('imagenes')) {
-    return ['Tecnico de Imagenes', 'RX Quirofano', 'Ecografia'];
-  }
-  if (u.includes('cardio') || n.includes('cardio') || u.includes('coronaria') || n.includes('uco')) {
-    return ['Cardiologia/Unidad Coronaria'];
-  }
+  if (!u || u === 'sistemas' || u === 'admin' || u === 'personal' || u === 'direccion' || n.includes('sistemas') || n.includes('administracion')) return catalogo;
+  if (u === 'guardia' || n === 'guardia') return ['Guardia externa Adultos'];
+  if (u.includes('uti') || n.includes('uti') || u.includes('terapia') || n.includes('terapia')) return ['Terapia Intensiva (UTI)', 'Terapia Intensiva Pediatrica (UTIP)'];
+  if (u.includes('pediatria') || n.includes('pediatria') || u.includes('neo') || n.includes('neo')) return ['Guardia externa Pediatrica', 'Neonatologia', 'Pediatria', 'Terapia Intensiva Pediatrica (UTIP)'];
+  if (u.includes('ecoimagenes') || n.includes('ecoimagenes') || u.includes('ecodoppler')) return ['Ecodopler cardiaco', 'Ecodopler cardiaco Pediatrico', 'Ecografia'];
+  if (u.includes('anestesia') || n.includes('anestesia')) return ['Anestesista', 'Tecnico de Anestesia'];
+  if (u.includes('imagenes') || u.includes('rayos') || n.includes('imagenes')) return ['Tecnico de Imagenes', 'RX Quirofano', 'Ecografia'];
+  if (u.includes('cardio') || n.includes('cardio') || u.includes('coronaria') || n.includes('uco')) return ['Cardiologia/Unidad Coronaria'];
 
   var coincidencias = catalogo.filter(function(s) {
     var sNorm = normalizarTexto(s);
     return (u && sNorm.includes(u)) || (n && sNorm.includes(n));
   });
-
   return coincidencias.length > 0 ? coincidencias : catalogo;
 }
 
 function abrirModalMiPlanilla() {
-  if (!modalMiPlanillaInstance) {
-    modalMiPlanillaInstance = new bootstrap.Modal(document.getElementById('modalMiPlanilla'));
-  }
-  
+  if (!modalMiPlanillaInstance) modalMiPlanillaInstance = new bootstrap.Modal(document.getElementById('modalMiPlanilla'));
   var hoy = new Date();
   var primerDia = formatearFechaLocalISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
   var ultimoDia = formatearFechaLocalISO(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0));
 
   var serviciosPermitidos = obtenerServiciosSegunUsuario();
-  var sel = document.getElementById('miServicioNombre');
-  var opcionesHtml = [];
+  var elSrv = document.getElementById('miServicioNombre');
 
-  if (serviciosPermitidos.length > 1) {
-    opcionesHtml.push('<option value="__TODOS_MIS_SERVICIOS__">Todos mis servicios asignados (' + serviciosPermitidos.length + ')</option>');
-  }
-
-  serviciosPermitidos.forEach(function(s) {
-    opcionesHtml.push('<option value="' + s + '">' + s + '</option>');
-  });
-
-  sel.innerHTML = opcionesHtml.join('');
-  // Si es UTI, preseleccionamos directamente "Terapia Intensiva (UTI)"
-  if (serviciosPermitidos.includes('Terapia Intensiva (UTI)') && serviciosPermitidos.length <= 2) {
-    sel.value = 'Terapia Intensiva (UTI)';
+  if (elSrv && elSrv.tagName === 'SELECT') {
+    var opcionesHtml = [];
+    if (serviciosPermitidos.length > 1) {
+      opcionesHtml.push('<option value="__TODOS_MIS_SERVICIOS__">Todos mis servicios asignados (' + serviciosPermitidos.length + ')</option>');
+    }
+    serviciosPermitidos.forEach(function(s) { opcionesHtml.push('<option value="' + s + '">' + s + '</option>'); });
+    elSrv.innerHTML = opcionesHtml.join('');
+    if (serviciosPermitidos.includes('Terapia Intensiva (UTI)') && serviciosPermitidos.length <= 2) {
+      elSrv.value = 'Terapia Intensiva (UTI)';
+    }
+  } else if (elSrv) {
+    elSrv.value = serviciosPermitidos.includes('Terapia Intensiva (UTI)') ? 'Terapia Intensiva (UTI)' : (serviciosPermitidos[0] || 'Mi Servicio');
   }
 
   document.getElementById('miPlanillaDesde').value = primerDia;
   document.getElementById('miPlanillaHasta').value = ultimoDia;
-
   modalMiPlanillaInstance.show();
 }
 
 async function exportarExcelMiServicio() {
   var dDesde = document.getElementById('miPlanillaDesde').value;
   var dHasta = document.getElementById('miPlanillaHasta').value;
-  var seleccion = document.getElementById('miServicioNombre').value;
+  var elSrv = document.getElementById('miServicioNombre');
+  var seleccion = elSrv ? elSrv.value : '';
   var btn = document.getElementById('btnDescargarMiExcel');
 
-  var listaServicios = (seleccion === '__TODOS_MIS_SERVICIOS__')
-    ? obtenerServiciosSegunUsuario()
-    : [seleccion];
-
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generando...';
-  }
+  var listaServicios = (!seleccion || seleccion === '__TODOS_MIS_SERVICIOS__') ? obtenerServiciosSegunUsuario() : [seleccion];
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Generando...'; }
 
   try {
     let query = db.from('guardias').select('*').in('servicio', listaServicios);
-    
-    // Filtro por superposición de fechas (incluye guardias que empiezan en el mes aunque terminen el 1 del mes siguiente)
     if (dDesde) query = query.gte('fecha_fin', dDesde);
     if (dHasta) query = query.lte('fecha_inicio', dHasta);
 
@@ -633,7 +443,7 @@ async function exportarExcelMiServicio() {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      alert('No se encontraron guardias registradas para ' + (seleccion === '__TODOS_MIS_SERVICIOS__' ? 'sus servicios' : seleccion) + ' entre ' + dDesde + ' y ' + dHasta + '.');
+      alert('No se encontraron guardias registradas para ese servicio entre ' + dDesde + ' y ' + dHasta + '.');
       return;
     }
 
@@ -654,24 +464,15 @@ async function exportarExcelMiServicio() {
     var ws = XLSX.utils.json_to_sheet(filas);
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Mis_Guardias");
+    ws['!cols'] = [{ wch: 28 }, { wch: 10 }, { wch: 24 }, { wch: 12 }, { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 20 }];
 
-    ws['!cols'] = [
-      { wch: 28 }, { wch: 10 }, { wch: 24 }, { wch: 12 }, 
-      { wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 20 }
-    ];
-
-    var etiquetaLimpia = (seleccion === '__TODOS_MIS_SERVICIOS__' ? 'Servicio' : seleccion).replace(/[^a-zA-Z0-9]+/g, '_');
-    var nombreArchivo = "Guardias_" + etiquetaLimpia + "_" + dDesde + "_al_" + dHasta + ".xlsx";
-    XLSX.writeFile(wb, nombreArchivo);
-
+    var etiquetaLimpia = (seleccion === '__TODOS_MIS_SERVICIOS__' ? 'Mis_Servicios' : seleccion).replace(/[^a-zA-Z0-9]+/g, '_');
+    XLSX.writeFile(wb, "Guardias_" + etiquetaLimpia + "_" + dDesde + "_al_" + dHasta + ".xlsx");
     if (modalMiPlanillaInstance) modalMiPlanillaInstance.hide();
-  } catch(e) {
+  } catch (e) {
     alert("Error al descargar planilla: " + e.message);
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Descargar Excel (.xlsx)';
-    }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Descargar Excel (.xlsx)'; }
   }
 }
 
@@ -690,7 +491,6 @@ async function validarPin() {
   var pin = document.getElementById('adminPin').value;
   var btnIngresar = document.querySelector('#modalLogin .btn-primary');
   var lblError = document.getElementById('loginError');
-
   lblError.style.display = 'none';
   if (!pin) return;
 
@@ -704,7 +504,6 @@ async function validarPin() {
       body: JSON.stringify({ pin: pin })
     });
     var res = await resp.json();
-
     if (resp.ok && res.success) {
       tokenAdmin = res.token || 'admin_ok';
       sessionStorage.setItem("admin_token", tokenAdmin);
@@ -726,15 +525,10 @@ async function validarPin() {
 function activarModoAdmin() {
   document.getElementById('seccionAdmin').style.display = 'block';
   document.getElementById('btnAuth').innerHTML = '<i class="bi bi-shield-check text-success"></i> Admin Activo';
-
   var inputBusqueda = document.getElementById('filtroNombre');
-  if (inputBusqueda) {
-    inputBusqueda.value = '';
-  }
-
+  if (inputBusqueda) inputBusqueda.value = '';
   cargarHistorial();
   cargarAlertas();
-  document.getElementById('seccionAdmin').scrollIntoView({ behavior: 'smooth' });
 }
 
 function cerrarSesionAdmin() {
@@ -746,37 +540,28 @@ function cerrarSesionAdmin() {
 
 function obtenerTodosLosServicios() {
   var servicios = [];
-  if (typeof SERVICIOS_CRITICOS !== 'undefined') servicios.push(...SERVICIOS_CRITICOS);
-  if (typeof SERVICIOS_OPERATIVOS !== 'undefined') servicios.push(...SERVICIOS_OPERATIVOS);
-
+  if (typeof SERVICIOS_CRITICOS !== 'undefined') servicios.push.apply(servicios, SERVICIOS_CRITICOS);
+  if (typeof SERVICIOS_OPERATIVOS !== 'undefined') servicios.push.apply(servicios, SERVICIOS_OPERATIVOS);
   if (Array.isArray(todasLasGuardiasRaw)) {
     todasLasGuardiasRaw.forEach(function(g) {
       if (g.servicio && !servicios.includes(g.servicio)) servicios.push(g.servicio);
     });
   }
-
-  return [...new Set(servicios)]
-    .filter(function(s) { return s && s.trim() !== 'UTI'; })
-    .sort();
+  return Array.from(new Set(servicios)).filter(function(s) { return s && s.trim() !== 'UTI'; }).sort();
 }
 
-// Auditoría de 48 hs ultra-rápida (agrupada por servicio y usando memoria local)
 function cargarAlertas() {
   if (!tokenAdmin) return;
   try {
     var ahora = new Date();
-
     var inicioAuditoria = new Date(ahora);
-    if (ahora.getHours() < 8) {
-      inicioAuditoria.setDate(inicioAuditoria.getDate() - 1);
-    }
+    if (ahora.getHours() < 8) inicioAuditoria.setDate(inicioAuditoria.getDate() - 1);
     inicioAuditoria.setHours(8, 0, 0, 0);
 
-    var finAuditoriaMs = inicioAuditoria.getTime() + (48 * 60 * 60 * 1000);
+    var finAuditoriaMs = inicioAuditoria.getTime() + 172800000;
     var todosLosServicios = obtenerTodosLosServicios();
     huecosDetectadosGlobal = [];
 
-    // Pre-agrupar las guardias por servicio para no recorrer todo el array en cada paso
     var guardiasPorServicio = {};
     todosLosServicios.forEach(function(s) { guardiasPorServicio[s] = []; });
     todasLasGuardiasRaw.forEach(function(g) {
@@ -784,8 +569,7 @@ function cargarAlertas() {
       guardiasPorServicio[g.servicio].push(g);
     });
 
-    var PASO_MS = 30 * 60 * 1000;
-
+    var PASO_MS = 1800000;
     for (var idx = 0; idx < todosLosServicios.length; idx++) {
       var srv = todosLosServicios[idx];
       var guardiasDelServicio = guardiasPorServicio[srv] || [];
@@ -793,11 +577,8 @@ function cargarAlertas() {
       var cursorMs = inicioAuditoria.getTime();
 
       while (cursorMs < finAuditoriaMs) {
-        var tiempoMedio = new Date(cursorMs + (PASO_MS / 2));
-
-        var cubierto = (typeof esHorarioPlantaInstitucional === 'function')
-          ? esHorarioPlantaInstitucional(srv, tiempoMedio)
-          : false;
+        var tiempoMedio = new Date(cursorMs + 900000);
+        var cubierto = typeof esHorarioPlantaInstitucional === 'function' ? esHorarioPlantaInstitucional(srv, tiempoMedio) : false;
 
         if (!cubierto) {
           for (var j = 0; j < guardiasDelServicio.length; j++) {
@@ -809,33 +590,21 @@ function cargarAlertas() {
         }
 
         if (!cubierto) {
-          if (!huecoActual) {
-            huecoActual = {
-              servicio: srv,
-              inicio: new Date(cursorMs),
-              fin: new Date(cursorMs + PASO_MS)
-            };
-          } else {
-            huecoActual.fin = new Date(cursorMs + PASO_MS);
-          }
+          if (!huecoActual) huecoActual = { servicio: srv, inicio: new Date(cursorMs), fin: new Date(cursorMs + PASO_MS) };
+          else huecoActual.fin = new Date(cursorMs + PASO_MS);
         } else if (huecoActual) {
           huecosDetectadosGlobal.push(huecoActual);
           huecoActual = null;
         }
-
         cursorMs += PASO_MS;
       }
-
-      if (huecoActual) {
-        huecosDetectadosGlobal.push(huecoActual);
-      }
+      if (huecoActual) huecosDetectadosGlobal.push(huecoActual);
     }
 
     poblarComboFiltroAlertas(todosLosServicios);
     filtrarAlertasPorServicio();
-
-  } catch(e) {
-    console.error("Error al auditar descubiertos horarios:", e);
+  } catch (e) {
+    console.error("Error alertas:", e);
   }
 }
 
@@ -844,23 +613,14 @@ function poblarComboFiltroAlertas(servicios) {
   if (!sel) return;
   var valorPrevio = sel.value;
   var html = ['<option value="">Todos los servicios (' + servicios.length + ')</option>'];
-  servicios.forEach(function(s) {
-    html.push('<option value="' + s + '">' + s + '</option>');
-  });
+  servicios.forEach(function(s) { html.push('<option value="' + s + '">' + s + '</option>'); });
   sel.innerHTML = html.join('');
   if (valorPrevio) sel.value = valorPrevio;
 }
 
 function filtrarAlertasPorServicio() {
   var srvFiltro = document.getElementById('filtroServicioAlerta').value;
-  if (!srvFiltro) {
-    renderizarListaAlertas(huecosDetectadosGlobal);
-  } else {
-    var filtrados = huecosDetectadosGlobal.filter(function(h) {
-      return h.servicio === srvFiltro;
-    });
-    renderizarListaAlertas(filtrados);
-  }
+  renderizarListaAlertas(!srvFiltro ? huecosDetectadosGlobal : huecosDetectadosGlobal.filter(function(h) { return h.servicio === srvFiltro; }));
 }
 
 function formatearRangoAlerta(inicio, fin) {
@@ -868,23 +628,17 @@ function formatearRangoAlerta(inicio, fin) {
   var hIniStr = inicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   var fFinStr = fin.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
   var hFinStr = fin.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  var duracionHoras = Math.round((fin - inicio) / (1000 * 60 * 60));
-
-  if (fIniStr === fFinStr) {
-    return 'el <strong>' + fIniStr + '</strong> de <u>' + hIniStr + ' a ' + hFinStr + ' hs</u> (' + duracionHoras + ' hs sin cobertura)';
-  } else {
-    return 'desde el <strong>' + fIniStr + ' ' + hIniStr + ' hs</strong> hasta el <strong>' + fFinStr + ' ' + hFinStr + ' hs</strong> (' + duracionHoras + ' hs sin cobertura)';
-  }
+  var duracionHoras = Math.round((fin - inicio) / 3600000);
+  return fIniStr === fFinStr
+    ? 'el <strong>' + fIniStr + '</strong> de <u>' + hIniStr + ' a ' + hFinStr + ' hs</u> (' + duracionHoras + ' hs sin cobertura)'
+    : 'desde el <strong>' + fIniStr + ' ' + hIniStr + ' hs</strong> hasta el <strong>' + fFinStr + ' ' + hFinStr + ' hs</strong> (' + duracionHoras + ' hs sin cobertura)';
 }
 
 function renderizarListaAlertas(lista) {
   var cont = document.getElementById('contenedorAlertas');
   var contenedorTexto = document.getElementById('listaHuecos');
   var badge = document.getElementById('badgeCantHuecos');
-
   if (!cont || !contenedorTexto) return;
-
   if (badge) badge.innerText = lista.length;
 
   if (lista.length === 0) {
@@ -899,28 +653,16 @@ function renderizarListaAlertas(lista) {
   }
 
   contenedorTexto.innerHTML = lista.map(function(h) {
-    var descripcion = formatearRangoAlerta(h.inicio, h.fin);
-    return '<div class="mb-1 d-flex align-items-center gap-1 flex-wrap">' +
-             '<span class="badge bg-danger bg-opacity-75 text-white py-1">' + h.servicio + '</span> ' +
-             '<span class="text-light">Sin guardia ' + descripcion + '</span>' +
-           '</div>';
+    return '<div class="mb-1 d-flex align-items-center gap-1 flex-wrap"><span class="badge bg-danger bg-opacity-75 text-white py-1">' + h.servicio + '</span> <span class="text-light">Sin guardia ' + formatearRangoAlerta(h.inicio, h.fin) + '</span></div>';
   }).join('');
-
   cont.style.display = 'block';
 }
 
 async function cargarHistorial() {
   if (!tokenAdmin || !db) return;
   try {
-    var { data, error } = await db
-      .from('guardias')
-      .select('*')
-      .neq('servicio', 'UTI')
-      .order('created_at', { ascending: false })
-      .limit(350);
-
+    var { data, error } = await db.from('guardias').select('*').neq('servicio', 'UTI').order('created_at', { ascending: false }).limit(350);
     if (error) throw error;
-
     historialCompleto = (data || []).map(function(d) {
       return {
         id: d.id,
@@ -936,10 +678,9 @@ async function cargarHistorial() {
         observaciones: d.observaciones ? String(d.observaciones).trim() : ''
       };
     });
-
     llenarComboServicios(historialCompleto);
     ejecutarFiltroHistorial();
-  } catch(e) {
+  } catch (e) {
     console.error("Error historial:", e);
   }
 }
@@ -947,5 +688,234 @@ async function cargarHistorial() {
 function llenarComboServicios(data) {
   var combo = document.getElementById('filtroServicio');
   var previo = combo.value;
-  var servicios = [...new Set(data.map(function(d) { return d.servicio; }))]
-    .filter(function(s) { return s && s.trim
+  var servicios = Array.from(new Set(data.map(function(d) { return d.servicio; }))).filter(function(s) { return s && s.trim() !== 'UTI'; }).sort();
+  var html = ['<option value="">Todos los servicios</option>'];
+  servicios.forEach(function(s) { html.push('<option value="' + s + '">' + s + '</option>'); });
+  combo.innerHTML = html.join('');
+  if (previo) combo.value = previo;
+}
+
+function filtrarHistorial() {
+  if (timerFiltroHistorial) clearTimeout(timerFiltroHistorial);
+  timerFiltroHistorial = setTimeout(ejecutarFiltroHistorial, 120);
+}
+
+function ejecutarFiltroHistorial() {
+  var txt = document.getElementById('filtroNombre').value.toLowerCase();
+  var serv = document.getElementById('filtroServicio').value;
+  var dDesde = document.getElementById('filtroDesde').value;
+  var dHasta = document.getElementById('filtroHasta').value;
+
+  var filtrados = historialCompleto.filter(function(item) {
+    var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt) || item.interno.toLowerCase().includes(txt) || item.observaciones.toLowerCase().includes(txt);
+    var coincideServ = !serv || item.servicio === serv;
+    var coincideDesde = !dDesde || item.fechaFin >= dDesde;
+    var coincideHasta = !dHasta || item.fechaInicio <= dHasta;
+    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+  });
+  renderizarTablaHistorial(filtrados);
+}
+
+function renderizarTablaHistorial(datos) {
+  var tbody = document.getElementById('tablaHistorial');
+  if (datos.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center tabla-vacia">No se encontraron guardias con esos filtros.</td></tr>';
+    return;
+  }
+  var filasHtml = datos.slice(0, 150).map(function(d) {
+    var badgeObsHist = '';
+    if (d.observaciones && d.observaciones !== 'Normal Activa') {
+      var cB = d.observaciones.toLowerCase().includes('rojo') ? 'bg-danger' : 'bg-warning text-dark';
+      badgeObsHist = '<br><span class="badge ' + cB + ' py-0" style="font-size:0.7rem;">' + d.observaciones + '</span>';
+    }
+    return '<tr><td class="text-secondary small">' + d.timestamp + '</td><td class="fw-bold text-white">' + d.servicio + badgeObsHist + '</td><td><span class="badge ' + (d.tipo === 'Activa' ? 'bg-success' : 'bg-primary') + '">' + d.tipo + '</span></td><td><small>' + d.modalidad + '</small></td><td>' + d.fechaInicio + ' al ' + d.fechaFin + '</td><td>' + d.responsable + '</td><td class="text-warning">' + d.contacto + '</td><td>' + (d.interno ? '<span class="badge bg-secondary">Int. ' + d.interno + '</span>' : '-') + '</td><td><button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarFila(' + d.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
+  });
+  tbody.innerHTML = filasHtml.join('');
+}
+
+async function eliminarFila(id) {
+  if (!confirm('¿Seguro que deseas eliminar este registro de guardia?')) return;
+  try {
+    var { error } = await db.from('guardias').delete().eq('id', id);
+    if (error) throw error;
+    await cargarDatos(true);
+  } catch (e) {
+    alert("Error al eliminar: " + e.message);
+  }
+}
+
+function exportarExcelFiltrado() {
+  var txt = document.getElementById('filtroNombre').value.toLowerCase();
+  var serv = document.getElementById('filtroServicio').value;
+  var dDesde = document.getElementById('filtroDesde').value;
+  var dHasta = document.getElementById('filtroHasta').value;
+
+  var filtrados = historialCompleto.filter(function(item) {
+    var coincideTxt = !txt || item.responsable.toLowerCase().includes(txt) || item.contacto.toLowerCase().includes(txt) || item.interno.toLowerCase().includes(txt) || item.observaciones.toLowerCase().includes(txt);
+    var coincideServ = !serv || item.servicio === serv;
+    var coincideDesde = !dDesde || item.fechaFin >= dDesde;
+    var coincideHasta = !dHasta || item.fechaInicio <= dHasta;
+    return coincideTxt && coincideServ && coincideDesde && coincideHasta;
+  });
+
+  if (filtrados.length === 0) { alert('No hay datos visibles para exportar.'); return; }
+  var filasExcel = filtrados.map(function(d) {
+    return { "Fecha Carga": d.timestamp || '', "Servicio": d.servicio || '', "Observaciones": d.observaciones || 'Normal Activa', "Tipo": d.tipo || '', "Modalidad": d.modalidad || '', "Desde": d.fechaInicio || '', "Hasta": d.fechaFin || '', "Responsable": d.responsable || '', "WhatsApp / Móvil": d.contacto || '', "Interno": d.interno || '' };
+  });
+  var ws = XLSX.utils.json_to_sheet(filasExcel);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Guardias");
+  XLSX.writeFile(wb, "Reporte_Guardias_HIRS_" + formatearFechaLocalISO(new Date()) + ".xlsx");
+}
+
+async function abrirModalJefes() {
+  if (!tokenAdmin) return;
+  if (!modalJefesInstance) modalJefesInstance = new bootstrap.Modal(document.getElementById('modalJefes'));
+  await cargarTablaJefes();
+  modalJefesInstance.show();
+}
+
+async function cargarTablaJefes() {
+  var tbody = document.getElementById('tablaJefesBody');
+  var selServ = document.getElementById('jefeSelServicio');
+  tbody.innerHTML = '<tr><td colspan="4" class="text-center tabla-vacia">Cargando jefaturas...</td></tr>';
+  try {
+    const { data, error } = await db.from('referentes_servicios').select('*').order('servicio');
+    if (error) throw error;
+    var opciones = ['<option value="">-- Seleccione un Servicio --</option>'];
+    obtenerTodosLosServicios().forEach(function(s) { opciones.push('<option value="' + s + '">' + s + '</option>'); });
+    selServ.innerHTML = opciones.join('');
+
+    var lista = data || [];
+    if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center tabla-vacia">No hay jefes registrados aún.</td></tr>'; return; }
+    tbody.innerHTML = lista.map(function(j) {
+      referentesCache[j.servicio] = { id: j.id, nombre: j.nombre_referente, contacto: j.contacto };
+      return '<tr><td class="fw-bold text-info">' + j.servicio + '</td><td>' + j.nombre_referente + '</td><td class="text-warning">' + j.contacto + '</td><td><button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarJefe(' + j.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-danger text-center">Error al conectar con la base de datos.</td></tr>';
+  }
+}
+
+async function guardarJefeServicio(e) {
+  e.preventDefault();
+  var srv = document.getElementById('jefeSelServicio').value;
+  var nom = document.getElementById('jefeNombre').value.trim();
+  var tel = document.getElementById('jefeContacto').value.trim();
+  if (!srv || !nom || !tel) return;
+  try {
+    const { error } = await db.from('referentes_servicios').upsert({ servicio: srv, nombre_referente: nom, contacto: tel }, { onConflict: 'servicio' });
+    if (error) throw error;
+    document.getElementById('formJefe').reset();
+    await cargarTablaJefes();
+  } catch (err) {
+    alert("Error al guardar jefe: " + err.message);
+  }
+}
+
+async function eliminarJefe(id) {
+  if (!confirm("¿Desea eliminar esta jefatura?")) return;
+  try {
+    const { error } = await db.from('referentes_servicios').delete().eq('id', id);
+    if (error) throw error;
+    await cargarTablaJefes();
+  } catch (err) {
+    alert("Error al eliminar: " + err.message);
+  }
+}
+
+async function abrirModalIncumplidas() {
+  if (!tokenAdmin) return;
+  if (!modalIncumplidasInstance) modalIncumplidasInstance = new bootstrap.Modal(document.getElementById('modalIncumplidas'));
+  await cargarTablaIncumplidas();
+  modalIncumplidasInstance.show();
+}
+
+async function cargarTablaIncumplidas() {
+  var tbody = document.getElementById('tablaIncumplidasBody');
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia">Cargando incidentes...</td></tr>';
+  try {
+    const { data, error } = await db.from('guardias_incumplidas').select('*').order('fecha_reporte', { ascending: false }).limit(200);
+    if (error) throw error;
+    guardiasIncumplidasLista = data || [];
+    if (guardiasIncumplidasLista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center tabla-vacia text-success">No se han registrado incidentes de guardia.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = guardiasIncumplidasLista.map(function(item) {
+      var fRep = item.fecha_reporte ? new Date(item.fecha_reporte).toLocaleString() : '-';
+      return '<tr><td class="text-secondary small">' + fRep + '</td><td class="fw-bold text-danger">' + item.servicio + '</td><td>' + item.responsable + '</td><td><span class="badge bg-secondary">' + (item.tipo || '-') + '</span></td><td><small>' + (item.modalidad || '-') + '</small></td><td class="text-warning small">' + (item.motivo || 'Reportado') + '</td><td><button class="btn btn-outline-danger btn-sm py-0" onclick="eliminarReporteIncumplido(' + item.id + ')"><i class="bi bi-trash"></i></button></td></tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Error al conectar con la base de datos.</td></tr>';
+  }
+}
+
+async function eliminarReporteIncumplido(id) {
+  if (!confirm("¿Desea quitar este registro de incidente?")) return;
+  try {
+    const { error } = await db.from('guardias_incumplidas').delete().eq('id', id);
+    if (error) throw error;
+    await cargarTablaIncumplidas();
+  } catch (e) {
+    alert("Error al eliminar: " + e.message);
+  }
+}
+
+function exportarExcelIncumplidas() {
+  if (!guardiasIncumplidasLista || guardiasIncumplidasLista.length === 0) { alert('No hay incidentes para exportar.'); return; }
+  var filas = guardiasIncumplidasLista.map(function(d) {
+    return { "Fecha de Reporte": d.fecha_reporte ? new Date(d.fecha_reporte).toLocaleString() : '', "Servicio": d.servicio || '', "Responsable Reportado": d.responsable || '', "Tipo de Guardia": d.tipo || '', "Modalidad": d.modalidad || '', "Detalle / Incidente": d.motivo || '' };
+  });
+  var ws = XLSX.utils.json_to_sheet(filas);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Incidentes");
+  XLSX.writeFile(wb, "Reporte_Incidentes_Guardias_HIRS_" + formatearFechaLocalISO(new Date()) + ".xlsx");
+}
+
+async function abrirModalLogs() {
+  if (!tokenAdmin) return;
+  if (!modalLogsInstance) modalLogsInstance = new bootstrap.Modal(document.getElementById('modalLogs'));
+  await cargarTablaLogs();
+  modalLogsInstance.show();
+}
+
+async function cargarTablaLogs() {
+  var tbody = document.getElementById('tablaLogsBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center tabla-vacia">Cargando registros de auditoría...</td></tr>';
+  try {
+    const { data, error } = await db.from('logs_auditoria').select('*').order('fecha_hora', { ascending: false }).limit(150);
+    if (error) throw error;
+    logsAuditoriaLista = data || [];
+    if (logsAuditoriaLista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center tabla-vacia text-success">No se han registrado movimientos.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = logsAuditoriaLista.map(function(l) {
+      var fHora = l.fecha_hora ? new Date(l.fecha_hora).toLocaleString() : '-';
+      var badgeClass = l.operacion === 'ELIMINAR' ? 'bg-danger' : (l.operacion === 'CREAR' ? 'bg-success' : 'bg-warning text-dark');
+      var ant = l.datos_anteriores || {};
+      var nvo = l.datos_nuevos || {};
+      var detalle = l.operacion === 'ELIMINAR'
+        ? 'Se eliminó guardia del ' + (ant.fecha_inicio || '?') + ' al ' + (ant.fecha_fin || '?')
+        : (l.operacion === 'CREAR' ? 'Alta asignada: ' + (nvo.fecha_inicio || '?') + ' al ' + (nvo.fecha_fin || '?') : 'Modificación');
+      return '<tr><td class="text-secondary">' + fHora + '</td><td><span class="badge ' + badgeClass + '">' + l.operacion + '</span></td><td class="text-secondary">' + (l.registro_id || '-') + '</td><td class="fw-bold text-light">' + (l.servicio || '-') + '</td><td>' + (l.responsable || '-') + '</td><td class="text-info small">' + detalle + '</td></tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Error al conectar con la base de datos.</td></tr>';
+  }
+}
+
+function exportarExcelLogs() {
+  if (!logsAuditoriaLista || logsAuditoriaLista.length === 0) { alert('No hay registros de auditoría para exportar.'); return; }
+  var filas = logsAuditoriaLista.map(function(d) {
+    return { "ID Log": d.id, "Fecha y Hora": d.fecha_hora ? new Date(d.fecha_hora).toLocaleString() : '', "Operación": d.operacion || '', "Tabla": d.tabla_afectada || '', "ID Registro": d.registro_id || '', "Servicio": d.servicio || '', "Responsable": d.responsable || '', "Datos Anteriores (JSON)": d.datos_anteriores ? JSON.stringify(d.datos_anteriores) : '', "Datos Nuevos (JSON)": d.datos_nuevos ? JSON.stringify(d.datos_nuevos) : '' };
+  });
+  var ws = XLSX.utils.json_to_sheet(filas);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+  XLSX.writeFile(wb, "Logs_Auditoria_Guardias_HIRS_" + formatearFechaLocalISO(new Date()) + ".xlsx");
+}
+
+if (tokenAdmin) activarModoAdmin();
+cargarDatos(false);
