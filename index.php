@@ -1,5 +1,5 @@
 <?php
-// Inclusión del módulo de autenticación según la nueva estructura de directorios
+// Inclusión del módulo de autenticación según la estructura de directorios
 $authFile = __DIR__ . '/../../includes/auth.php';
 if (file_exists($authFile)) {
     require_once $authFile;
@@ -14,7 +14,7 @@ $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
 // Control central de versión
-$APP_VERSION = "v2.6.6";
+$APP_VERSION = "v2.7.0";
 $APP_FECHA   = "16/10/2026";
 ?>
 <!DOCTYPE html>
@@ -44,7 +44,7 @@ $APP_FECHA   = "16/10/2026";
       color: #94a3b8 !important; 
       opacity: 1 !important; 
     }
-    .form-control:focus, textarea:focus, .filtro-input:focus { 
+    .form-control:focus, .form-select:focus, textarea:focus, .filtro-input:focus { 
       background-color: #0f172a !important; 
       color: #ffffff !important; 
       border-color: #38bdf8 !important; 
@@ -162,8 +162,6 @@ $APP_FECHA   = "16/10/2026";
     .alerta-oscura strong { color: #ffffff !important; }
     .alerta-oscura u { color: #f87171 !important; text-decoration: none; font-weight: 600; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -183,7 +181,7 @@ $APP_FECHA   = "16/10/2026";
         <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
           <small class="text-secondary">Hospital Italiano - Tiempo Real</small>
           <span class="text-secondary d-none d-sm-inline">•</span>
-          <span id="syncStatus" class="sync-badge"><i class="bi bi-arrow-repeat spin"></i> Conectando...</span>
+          <span id="syncStatus" class="sync-badge"><i class="bi bi-arrow-repeat"></i> Conectando...</span>
         </div>
       </div>
     </div>
@@ -343,7 +341,7 @@ $APP_FECHA   = "16/10/2026";
     <div class="row g-2 mb-3">
       <div class="col-md-3">
         <label class="form-label text-secondary small">Buscar por Nombre o Contacto:</label>
-        <input type="search" id="filtroNombre" name="buscar_query_filtro" class="form-control" placeholder="..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="filtrarHistorial()">
+        <input type="search" id="filtroNombre" name="buscar_query_filtro" class="form-control form-control-sm" placeholder="..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="filtrarHistorial()">
       </div>
       <div class="col-md-3">
         <label class="form-label text-secondary small">Servicio:</label>
@@ -390,7 +388,7 @@ $APP_FECHA   = "16/10/2026";
     <span>Última versión: <strong id="lblFechaUpdate"><?php echo $APP_FECHA; ?></strong></span>
   </footer>
 
-  <!-- Modal Descargar Mi Planilla (Filtrado estricto por Servicio Autenticado) -->
+  <!-- Modal Descargar Mi Planilla -->
   <div class="modal fade" id="modalMiPlanilla" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-dark border-secondary text-white">
@@ -402,9 +400,9 @@ $APP_FECHA   = "16/10/2026";
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label small text-secondary">Servicio autenticado:</label>
-            <input type="text" id="miServicioNombre" class="form-control form-control-sm bg-secondary bg-opacity-25 text-white fw-bold" readonly>
-            <div class="form-text" style="font-size: 0.75rem;">Solo se exportarán registros correspondientes a su área asignada.</div>
+            <label class="form-label small text-secondary">Servicio a exportar:</label>
+            <select id="miServicioNombre" class="form-select form-select-sm filtro-input fw-bold"></select>
+            <div class="form-text text-secondary" style="font-size: 0.75rem;">Se exportarán las guardias correspondientes al servicio y rango elegidos.</div>
           </div>
           <div class="row g-2 mb-2">
             <div class="col-6">
@@ -419,7 +417,7 @@ $APP_FECHA   = "16/10/2026";
         </div>
         <div class="modal-footer border-secondary">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-success btn-sm fw-bold" onclick="exportarExcelMiServicio()">
+          <button type="button" class="btn btn-success btn-sm fw-bold" id="btnDescargarMiExcel" onclick="exportarExcelMiServicio()">
             <i class="bi bi-file-earmark-excel"></i> Descargar Excel (.xlsx)
           </button>
         </div>
@@ -644,8 +642,12 @@ $APP_FECHA   = "16/10/2026";
   const SESION_NOMBRE  = "<?php echo addslashes($NOMBRE_SERVICIO); ?>";
 </script>
 
+<!-- Librerías externas cargadas una única vez -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Scripts de la aplicación -->
 <script src="js/config.js?v=<?php echo $APP_VERSION; ?>"></script>
 <script src="js/logica.js?v=<?php echo $APP_VERSION; ?>"></script>
 <script src="js/dashboard.js?v=<?php echo $APP_VERSION; ?>"></script>
