@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $USUARIO_LOGUEADO = $_SESSION['username'] ?? '';
 $NOMBRE_SERVICIO  = $_SESSION['name'] ?? '';
 
-$APP_VERSION = "v2.6.6";
+$APP_VERSION = "v2.6.7";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -167,12 +167,37 @@ $APP_VERSION = "v2.6.6";
   </div>
 </div>
 
+<!-- Modal Confirmar Reemplazo de Guardia Superpuesta -->
+<div class="modal fade" id="modalReemplazarGuardia" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark border-warning text-white shadow-lg">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fs-6 text-warning fw-bold">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i> Superposición de Guardia Detectada
+        </h5>
+        <button type="button" class="btn-close btn-close-white" id="btnCerrarModalReemplazo"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <p class="fs-5 mb-2">
+          ¿Desea reemplazar la guardia de: "<strong id="nombreResponsableReemplazo" class="text-info"></strong>"?
+        </p>
+        <div id="detalleSuperposicion" class="small text-secondary mt-3 p-2 rounded bg-black bg-opacity-50 border border-secondary"></div>
+      </div>
+      <div class="modal-footer border-secondary d-flex justify-content-center gap-3">
+        <button type="button" class="btn btn-secondary px-4 fw-bold" id="btnReemplazoNo">No</button>
+        <button type="button" class="btn btn-danger px-4 fw-bold" id="btnReemplazoSi">Sí</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Variables inyectadas por sesión de PHP para filtrar servicios según usuario -->
 <script>
   const SESION_USUARIO = "<?php echo addslashes($USUARIO_LOGUEADO); ?>";
   const SESION_NOMBRE  = "<?php echo addslashes($NOMBRE_SERVICIO); ?>";
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/config.js?v=<?php echo $APP_VERSION; ?>"></script>
 <script src="js/formulario.js?v=<?php echo $APP_VERSION; ?>"></script>
 </body>
